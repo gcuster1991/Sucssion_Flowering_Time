@@ -15,17 +15,19 @@ library(pairwiseAdonis)
 library(ggordiplots)
 library(tidyverse)
 library(vegan)
+library(RColorBrewer)
 ```
 
 Load environemnt
 ```{r}
 #loaded original and then subset to only what we needed to keep
 #load("~/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/MicroFloweringTime_Env.RData")
-load("/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/MicroFloweringTime_ENV_312.RData")
+load("/Users/gordoncuster/Desktop/Manuscript Submissions/In Review/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/GC_SFT_May2020.RData")
+
 ```
 read in new metadata
 ```{r}
-meta_data<-read.csv("/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/METADATA_successionVdevelop_7May20.csv")
+meta_data<-read.csv("/Users/gordoncuster/Desktop/Manuscript Submissions/In Review/SuccessionFloweringTime/SuccessionFloweringTime/METADATA_successionVdevelop_7May20.csv")
 rownames(meta_data) <- meta_data$sampleID
 meta_data$Sample=NULL
 MAP =  sample_data(meta_data)
@@ -85,18 +87,18 @@ timept<-timept + scale_colour_manual(values = c( "#1B9E77", "#D95F02", "#7570B3"
 timept
 
 
-shapiro.test(aov(results$Shannon~d$time_point)$residuals)
-tp_shannon<-kruskal.test(results$Shannon~ factor(d$time_point))
-dunnTest(results$Shannon~ factor(d$time_point), method = "bon")
+shapiro.test(aov(results$Shannon~d$Sampling_time)$residuals)
+tp_shannon<-kruskal.test(results$Shannon~ factor(d$Sampling_time))
+dunnTest(results$Shannon~ factor(d$Sampling_time), method = "bon")
 
-shapiro.test(aov(results$Simpson~d$time_point)$residuals)
-tp_simpson<-kruskal.test(results$Simpson~ factor(d$time_point))
-dunnTest(results$Simpson~ factor(d$time_point), method = "bon")
+shapiro.test(aov(results$Simpson~d$Sampling_time)$residuals)
+tp_simpson<-kruskal.test(results$Simpson~ factor(d$Sampling_time))
+dunnTest(results$Simpson~ factor(d$Sampling_time), method = "bon")
 
-shapiro.test(aov(results$Observed~d$time_point)$residuals)
+shapiro.test(aov(results$Observed~d$Sampling_time)$residuals)
 #Meets normality assumption but we will use kruskall wallis for congruency
-tp_observed<-kruskal.test(results$Observed~ factor(d$time_point))
-dunnTest(results$Observed~ factor(d$time_point), method = "bon")
+tp_observed<-kruskal.test(results$Observed~ factor(d$Sampling_time))
+dunnTest(results$Observed~ factor(d$Sampling_time), method = "bon")
 ```
 By phenotype aka flowering time
 ```{r}
