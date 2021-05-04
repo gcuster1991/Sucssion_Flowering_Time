@@ -179,25 +179,24 @@ status <- status +scale_colour_manual(values = c("#7FC97F", "#BEAED4", "#FDC086"
 status
 #rotate axis
 
-shapiro.test(aov(results$Shannon~d$status)$residuals)
-tp_shannon<-kruskal.test(results$Shannon~ factor(d$status))
-dunnTest(results$Shannon~ factor(d$status), method = "bon")
+shapiro.test(aov(results$Shannon~d$Developmental_stage)$residuals)
+tp_shannon<-kruskal.test(results$Shannon~ factor(d$Developmental_stage))
+dunnTest(results$Shannon~ factor(d$Developmental_stage), method = "bon")
 
-shapiro.test(aov(results$Simpson~d$status)$residuals)
-tp_simpson<-kruskal.test(results$Simpson~ factor(d$status))
-dunnTest(results$Simpson~ factor(d$status), method = "bon")
+shapiro.test(aov(results$Simpson~d$Developmental_stage)$residuals)
+tp_simpson<-kruskal.test(results$Simpson~ factor(d$Developmental_stage))
+dunnTest(results$Simpson~ factor(d$Developmental_stage), method = "bon")
 
-shapiro.test(aov(results$Observed~d$status)$residuals)
+shapiro.test(aov(results$Observed~d$Developmental_stage)$residuals)
 #Meets normality assumption but we will use kruskall wallis for congruency
-tp_observed<-kruskal.test(results$Observed~ factor(d$status))
-dunnTest(results$Observed~ factor(d$status), method = "bon")
+tp_observed<-kruskal.test(results$Observed~ factor(d$Developmental_stage))
+dunnTest(results$Observed~ factor(d$Developmental_stage), method = "bon")
 ```
 
 #Split by time point and look at flowering status within a given time point
 ```{r}
 
 ```
-
 
 ##Multivariate
 Prep
@@ -207,8 +206,7 @@ samp_data <- data.frame(sample_data(data_transformed))
 psdist<-parDist(as.matrix(taxa_table), method = "bray")
 ord<-metaMDS(taxa_table, distance = "bray", k=3, trymax = 100, previous.best = T)
 stressplot(ord)
-
-adonis(psdist ~ Genotype, data = data.frame((samp_data)), strata = "Genotype")
+adonis(psdist ~ Genotype, data = data.frame((samp_data)), strata = samp_data$Genotype)
 ```
 
 Time point and graph
