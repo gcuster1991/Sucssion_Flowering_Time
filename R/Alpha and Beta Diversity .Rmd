@@ -1,0 +1,624 @@
+---
+title: "Succession and Flowering Time "
+subtitle: "G. Custer 5-7-20"
+output: html_notebook
+---
+Below is a link to the reasoning for same statistics for strata argument. 
+http://r-sig-ecology.471788.n2.nabble.com/Adonis-output-with-or-without-strata-td7580521.html
+```{r}
+library(ggplot2) 
+library(phyloseq)
+library(gridExtra)
+library(EnvStats)
+library(FSA)
+library(parallelDist)
+library(pairwiseAdonis)
+library(ggordiplots)
+library(tidyverse)
+library(vegan)
+library(RColorBrewer)
+```
+
+Load environemnt
+```{r}
+#loaded original and then subset to only what we needed to keep
+#load("~/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/MicroFloweringTime_Env.RData")
+load("/Users/gordoncuster/Desktop/Manuscript Submissions/In Review/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/GC_SFT_May2020.RData")
+
+```
+read in new metadata
+```{r}
+meta_data<-read.csv("/Users/gordoncuster/Desktop/Manuscript Submissions/In Review/SuccessionFloweringTime/SuccessionFloweringTime/METADATA_successionVdevelop_7May20.csv")
+rownames(meta_data) <- meta_data$sampleID
+meta_data$Sample=NULL
+MAP =  sample_data(meta_data)
+```
+
+```{r}
+## MERGING INTO PHYLOSEQ OBJECT
+data <- merge_phyloseq(OTU,TAX,MAP)
+data
+```
+
+Subsetting to non-bacterial taxa
+```{r}
+## LOOKING AT CONTAMINATION AND UNASSIGNED SEQUENCES
+mitochondria_contaminants <- subset_taxa(data, Family == "Mitochondria") ## 118 ASVs of Mitochondria
+archaea_contaminants <- subset_taxa(data, Kingdom == "Archaea") ## 5 ASVs of Archaea
+#chloroplast_contaminants <- subset_taxa(data, Class == "Chloroplast")
+chloroplast_contaminants <- subset_taxa(data, Order == "Chloroplast") ## 104 chloroplasts
+eukaryota_contaminants <- subset_taxa(data, Kingdom == "Eukaryota")  ## 42 eukaryotic ASVs
+sequences_not_assigned_to_kingdom <- subset_taxa(data, is.na(Kingdom)) ##drop 37 ASVs not assigned at Kingdom level
+# ntaxa(chloroplast_contaminants)
+```
+
+Keep only bacterial taxa
+```{r}
+data.bac <- subset_taxa(data, Kingdom == "Bacteria")
+```
+
+Transform and rarefy
+```{r}
+#rarefy
+data_rarefied <- rarefy_even_depth(data.bac, sample.size= 77213, rngseed=(12), replace=F)
+#5 Samples removed
+#transform
+data_transformed <- transform_sample_counts(data.bac, function(x) x / sum(x) )
+data.bac
+data_rarefied
+data_transformed
+```
+##Alpha Diversity 
+```{r}
+#Prep data
+mic.assmblg <- data_rarefied
+results <- estimate_richness(mic.assmblg, measures = c('Shannon', 'Simpson', 'Observed'))
+d <- sample_data(mic.assmblg)
+```
+
+```{r}
+display.brewer.pal(n = 8, name = 'Dark2')
+brewer.pal(n = 8, name = "Dark2")
+#by time point
+timept <- plot_richness(mic.assmblg, x = "Sampling_time", measures=c("Shannon","Simpson", "Observed"), color='Sampling_time') + guides(color=guide_legend(title="Sampling Time"))#, shape="Sampling_time")
+#Pheno <- Pheno + scale_colour_manual(values = c("#CD6821","#CD6821","#CD6821","#CD6821","#158172","#158172","#158172","#158172","#214788","#214788","#214788","#214788")) 
+timept <- timept + geom_boxplot() + theme_bw() +theme(strip.text.x = element_text(size = 12, colour = "black", angle = 0)) +  theme(axis.text.x = element_text(color="black", size=10, angle=0),
+          axis.text.y = element_text(color="black", size=10, angle=45)) + scale_x_discrete(name ="Sampling Time") + theme(axis.text=element_text(size=12)) 
+timept<-timept + scale_colour_manual(values = c( "#1B9E77", "#D95F02", "#7570B3", "#E7298A"))
+timept
+
+
+shapiro.test(aov(results$Shannon~d$Sampling_time)$residuals)
+tp_shannon<-kruskal.test(results$Shannon~ factor(d$Sampling_time))
+dunnTest(results$Shannon~ factor(d$Sampling_time), method = "bon")
+
+shapiro.test(aov(results$Simpson~d$Sampling_time)$residuals)
+tp_simpson<-kruskal.test(results$Simpson~ factor(d$Sampling_time))
+dunnTest(results$Simpson~ factor(d$Sampling_time), method = "bon")
+
+shapiro.test(aov(results$Observed~d$Sampling_time)$residuals)
+#Meets normality assumption but we will use kruskall wallis for congruency
+tp_observed<-kruskal.test(results$Observed~ factor(d$Sampling_time))
+dunnTest(results$Observed~ factor(d$Sampling_time), method = "bon")
+```
+By phenotype aka flowering time
+```{r}
+#by flowering time
+ft <- plot_richness(mic.assmblg, x = "phenotype", measures=c("Shannon","Simpson", "Observed"), color='phenotype')  #, shape="time_point")
+#Pheno <- Pheno + scale_colour_manual(values = c("#CD6821","#CD6821","#CD6821","#CD6821","#158172","#158172","#158172","#158172","#214788","#214788","#214788","#214788")) 
+ft <- ft + geom_boxplot() + theme_bw()
+ft
+
+
+#shapiro.test(aov(results$Shannon~d$phenotype)$residuals)
+tp_shannon<-kruskal.test(results$Shannon~ factor(d$phenotype))
+dunnTest(results$Shannon~ factor(d$phenotype), method = "bon")
+#
+#shapiro.test(aov(results$Simpson~d$phenotype)$residuals)
+tp_simpson<-kruskal.test(results$Simpson~ factor(d$phenotype))
+dunnTest(results$Simpson~ factor(d$phenotype), method = "bon")
+
+#shapiro.test(aov(results$Observed~d$phenotype)$residuals)
+tp_observed<-kruskal.test(results$Observed~ factor(d$phenotype))
+dunnTest(results$Observed~ factor(d$phenotype), method = "bon")
+```
+By genotype
+```{r}
+#by genotype
+sample_data(mic.assmblg)$genotype_base <-  factor(sample_data(mic.assmblg)$genotype_base, levels = c( "CS3797", "SALK_072930C", "CS6673", "CS6230", "CS9869"), ordered = T)
+sample_data(mic.assmblg)$Genotype <-  factor(sample_data(mic.assmblg)$Genotype, levels = c( "CS3797 (TFL2-2, early)", "SALK_072930C (SVP-32, early)", "CS6673 (WT, WT)", "CS6230 (AP1-10, late)", "CS9869 (FT-10, late)"), ordered = T)
+
+#if we want to look at differences among samples at time 1 (all in veg stage) we can subset to only time 1 and replot same stuff.
+mic.assmblg_T1<-subset_samples(mic.assmblg, Sampling_time == "T1")
+
+geno <- plot_richness(mic.assmblg_T1, x = "genotype_base", measures=c("Shannon","Simpson", "Observed"), color='Genotype') + guides(color=guide_legend(title="Genotype"))#, shape="Sampling_time")
+#Pheno <- Pheno + scale_colour_manual(values = c("#CD6821","#CD6821","#CD6821","#CD6821","#158172","#158172","#158172","#158172","#214788","#214788","#214788","#214788")) 
+geno <- geno + geom_boxplot() + theme_bw() +theme(strip.text.x = element_text(size = 12, colour = "black", angle = 0)) +  theme(axis.text.x = element_text(color="black", size=8, angle=45, hjust=1),
+          axis.text.y = element_text(color="black", size=10, angle=45)) + scale_x_discrete(name ="Genotype") + theme(axis.text=element_text(size=12)) 
+#geno + scale_colour_manual(values = c("#CD6821","#158172","#214788","#F0E442", "#009E73", "#CC79A7")) 
+geno <- geno + scale_colour_manual(values = c( "#E69F00", "#56B4E9", "#009E73",
+          "#F0E442", "#0072B2"))
+geno
+
+
+
+#Pheno <- Pheno + scale_colour_manual(values = c("#CD6821","#CD6821","#CD6821","#CD6821","#158172","#158172","#158172","#158172","#214788","#214788","#214788","#214788")) 
+##timept <- timept + geom_boxplot() + theme_bw() +theme(strip.text.x = element_text(size = 12, colour = "black", angle = 0)) +  theme(axis.text.x = element_text(color="black", size=10, angle=0),
+#          axis.text.y = element_text(color="black", size=10, angle=45)) + scale_x_discrete(name ="Sampling Time") + theme(axis.text=element_text(size=12)) 
+#timept
+
+#rotate axis
+results_t1 <- estimate_richness(mic.assmblg_T1, measures = c('Shannon', 'Simpson', 'Observed'))
+d_t1 <- sample_data(mic.assmblg_T1)
+
+#shapiro.test(aov(results$Shannon~d$genotype)$residuals)
+tp_shannon<-kruskal.test(results_t1$Shannon~ factor(d_t1$genotype))
+dunnTest(results_t1$Shannon~ factor(d_t1$genotype), method = "bon")
+
+#shapiro.test(aov(results$Simpson~d$genotype)$residuals)
+tp_simpson<-kruskal.test(results_t1$Simpson~ factor(d_t1$genotype))
+dunnTest(results_t1$Simpson~ factor(d_t1$genotype), method = "bon")
+
+#shapiro.test(aov(results$Observed~d$genotype)$residuals)
+#Meets normality assumption but we will use kruskall wallis for congruency
+tp_observed<-kruskal.test(results_t1$Observed~ factor(d_t1$genotype))
+dunnTest(results_t1$Observed~ factor(d_t1$genotype), method = "bon")
+```
+flowering status
+```{r}
+display.brewer.all(colorblindFriendly = F)
+display.brewer.pal(n = 8, name = 'Accent')
+brewer.pal(n = 8, name = "Accent")
+
+sample_data(mic.assmblg)$Developmental_stage <-  factor(sample_data(mic.assmblg)$Developmental_stage, levels = c("vegetative", "flowering", "fruiting", "senesce"), ordered = T)
+#by genotype
+status <- plot_richness(mic.assmblg, x = "Developmental_stage", measures=c("Shannon","Simpson", "Observed"), color='Developmental_stage') + guides(color=guide_legend(title="Developmental Stage"))#, shape="Sampling_time")
+#Pheno <- Pheno + scale_colour_manual(values = c("#CD6821","#CD6821","#CD6821","#CD6821","#158172","#158172","#158172","#158172","#214788","#214788","#214788","#214788")) 
+status <- status + geom_boxplot() + theme_bw() +theme(strip.text.x = element_text(size = 12, colour = "black", angle = 0)) +  theme(axis.text.x = element_text(color="black", size=8, angle=45, hjust=1),
+          axis.text.y = element_text(color="black", size=10, angle=45)) + scale_x_discrete(name ="Developmental Stage") + theme(axis.text=element_text(size=12)) 
+status <- status +scale_colour_manual(values = c("#7FC97F", "#BEAED4", "#FDC086", "#386CB0"))
+status
+#rotate axis
+
+shapiro.test(aov(results$Shannon~d$Developmental_stage)$residuals)
+tp_shannon<-kruskal.test(results$Shannon~ factor(d$Developmental_stage))
+dunnTest(results$Shannon~ factor(d$Developmental_stage), method = "bon")
+
+shapiro.test(aov(results$Simpson~d$Developmental_stage)$residuals)
+tp_simpson<-kruskal.test(results$Simpson~ factor(d$Developmental_stage))
+dunnTest(results$Simpson~ factor(d$Developmental_stage), method = "bon")
+
+shapiro.test(aov(results$Observed~d$Developmental_stage)$residuals)
+#Meets normality assumption but we will use kruskall wallis for congruency
+tp_observed<-kruskal.test(results$Observed~ factor(d$Developmental_stage))
+dunnTest(results$Observed~ factor(d$Developmental_stage), method = "bon")
+```
+
+#Split by time point and look at flowering status within a given time point
+```{r}
+
+```
+
+##Multivariate
+Prep
+```{r}
+taxa_table<-data.frame(otu_table(data_transformed))
+samp_data <- data.frame(sample_data(data_transformed))
+psdist<-parDist(as.matrix(taxa_table), method = "bray")
+ord<-metaMDS(taxa_table, distance = "bray", k=3, trymax = 100, previous.best = T)
+stressplot(ord)
+#adonis(psdist ~ Genotype, data = data.frame((samp_data)), strata = samp_data$Genotype)
+```
+
+Time point and graph
+```{r}
+adonis(psdist ~ Sampling_time, data.frame((samp_data)), permutations = 1000)
+
+pairwise<-pairwise.adonis2(taxa_table ~ Sampling_time, data = data.frame(samp_data), perm=1000, p.adjust.methods="bonferroni")
+summary(pairwise)
+pairwise
+
+samp_data$Genotype <-  factor(samp_data$Genotype, levels = c( "CS3797 (TFL2-2, early)", "SALK_072930C (SVP-32, early)", "CS6673 (WT, WT)", "CS6230 (AP1-10, late)", "CS9869 (FT-10, late)"), ordered = T)
+
+ord<-ord
+#make the plot with everything 
+d <- gg_ordiplot(ord, samp_data$Sampling_time, choices = c(1, 2), kind = c("se"), conf = 0.95, show.groups = "all", ellipse = TRUE, label = FALSE, hull = FALSE, spiders = FALSE, plot = TRUE, pt.size = 1) 
+#pull out the ellipses
+df_ellipse <- d$df_ellipse
+ellipseT1 <- subset(df_ellipse, Group == "T1", droplevels= TRUE)
+ellipseT2 <- subset(df_ellipse, Group == "T2", droplevels= TRUE)
+ellipseT3 <- subset(df_ellipse, Group == "T3", droplevels= TRUE)
+ellipseT4 <- subset(df_ellipse, Group == "T4", droplevels= TRUE)
+
+#make the dataframe and subset out samples you dont want to plot
+test<-d$df_ord
+test$Sample_ID<-rownames(test)
+Herbicides<-data.frame(samp_data$Sampling_time, samp_data$phenotype, samp_data$Genotype, rownames(samp_data))
+names(Herbicides)<-c("Group", "Phenotype", "Genotype", "Sample_ID")
+test<-full_join(test, Herbicides)
+#test$Group=NULL
+names(test)<-c("x", "y","Time","SampleID", "Phenotype", "Genotype")
+
+#+ scale_colour_manual(values = c( "#1B9E77", "#D95F02", "#7570B3", "#E7298A"))
+
+#make the ggplot scatter plot
+plot_test<-ggplot(test, aes(x=test$x, y=test$y), color=Time)  + geom_point(aes(color= Time, shape=Genotype)) + scale_color_manual(values=c("#1B9E77", "#D95F02", "#7570B3", "#E7298A"))
+#add paths, color, and size, of the hulls
+plot_test <- plot_test +
+  geom_path(data= ellipseT1, aes(x=x, y=y), color="#1B9E77", linetype="solid", size=1.0) +
+    geom_path(data= ellipseT2, aes(x=x, y=y), color="#D95F02", linetype="solid", size=1.0) +
+  geom_path(data= ellipseT3, aes(x=x, y=y), color="#7570B3", linetype="solid", size=1.0) +
+    geom_path(data= ellipseT4, aes(x=x, y=y), color="#E7298A", linetype="solid", size=1.0) 
+
+#theme it on up
+plot_test<- plot_test + theme_classic()
+m<-plot_test 
+#m <-m + annotate("text", x = -0.05, y = -0.012, label = "Time 2")
+#m <-m + annotate("text", x = 0.01, y = -0.01, label = "Time 3")
+#m <-m + annotate("text", x = 0.045, y = -0.023, label = "Time 1")
+m <-m + annotate("text", x = 0.4, y = -0.5, label = "Time: p < 0.001")
+#m <- m + #ggtitle("NMDS of Infestation Stage and Soil Origin", ) +
+#  theme(plot.title = element_text(hjust = 0.5, size = 22)) + labs(shape="Soil Origin", colour="Infestation Stage")
+m <- m + labs(x= "NMDS2", y="NMDS1")
+#m + guides(colour=guide_legend(override.aes=list(linetype=c(2,rep(1,times=2)))))
+#t <- m + ggtitle("Ordination by Time") + theme(plot.title = element_text(hjust = 0.5, size = 22))  
+t <- m 
+t
+```
+This can be used to subset to individual time points. 
+```{r}
+#run this if we want to subset to time 1:
+#data_transformed_t1<-subset_samples(data_transformed, Sampling_time =="T1")
+#taxa_table<-data.frame(otu_table(data_transformed_t1))
+#samp_data <- data.frame(sample_data(data_transformed_t1))
+#psdist_t1<-parDist(as.matrix(taxa_table), method = "bray")
+#ord<-metaMDS(taxa_table, distance = "bray", k=3, trymax = 100, previous.best = T)
+
+
+
+adonis(psdist ~ Genotype, data = data.frame((samp_data)), permutations = 100)
+#not significant so no need to do pairwise comparisons. 
+#pairwise<-pairwise.adonis2(taxa_table ~ time_point, data = data.frame(samp_data), perm=1000, p.adjust.methods="bonferroni")
+#summary(pairwise)
+#pairwise
+samp_data$Genotype <-  factor(samp_data$Genotype, levels = c( "CS3797 (TFL2-2, early)", "SALK_072930C (SVP-32, early)", "CS6673 (WT, WT)", "CS6230 (AP1-10, late)", "CS9869 (FT-10, late)"), ordered = T)
+
+ord<-ord
+#make the plot with everything 
+d <- gg_ordiplot(ord, samp_data$Genotype, choices = c(1, 2), kind = c("se"), conf = 0.95, show.groups = "all", ellipse = TRUE, label = FALSE, hull = FALSE, spiders = FALSE, plot = TRUE, pt.size = 1) 
+#pull out the ellipses
+df_ellipse <- d$df_ellipse
+ellipseG1 <- subset(df_ellipse, Group == "CS3797 (TFL2-2, early)", droplevels= TRUE)
+ellipseG2 <- subset(df_ellipse, Group == "CS6230 (AP1-10, late)", droplevels= TRUE)
+ellipseG3 <- subset(df_ellipse, Group == "CS6673 (WT, WT)", droplevels= TRUE)
+ellipseG4 <- subset(df_ellipse, Group == "CS9869 (FT-10, late)", droplevels= TRUE)
+ellipseG5 <- subset(df_ellipse, Group == "SALK_072930C (SVP-32, early)", droplevels= TRUE)
+
+
+#make the dataframe and subset out samples you dont want to plot
+test<-d$df_ord
+test$Sample_ID<-rownames(test)
+Herbicides<-data.frame(samp_data$Sampling_time, samp_data$phenotype, samp_data$Genotype, rownames(samp_data))
+names(Herbicides)<-c("Time", "Phenotype", "Genotype", "Sample_ID")
+test<-full_join(test, Herbicides)
+#test$Group=NULL
+names(test)<-c("x", "y","Genotype","SampleID", "Time", "Phenotype", "Genotype2")
+
+#make the ggplot scatter plot
+plot_test<-ggplot(test, aes(x=test$x, y=test$y), color=Genotype)  + scale_color_manual(values=c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2")) + geom_point(aes(color= Genotype))
+#add paths, color, and size, of the hulls
+plot_test <- plot_test +
+    geom_path(data= ellipseG1, aes(x=x, y=y), color="#E69F00", linetype="solid", size=1.0) +
+    geom_path(data= ellipseG2, aes(x=x, y=y), color="#56B4E9", linetype="solid", size=1.0) +
+    geom_path(data= ellipseG3, aes(x=x, y=y), color="#009E73", linetype="solid", size=1.0) +
+    geom_path(data= ellipseG4, aes(x=x, y=y), color="#F0E442", linetype="solid", size=1.0) +
+    geom_path(data= ellipseG5, aes(x=x, y=y), color="#0072B2", linetype="solid", size=1.0) 
+#theme it on up
+plot_test<- plot_test + theme_classic()
+m<-plot_test 
+#m <-m + annotate("text", x = -0.05, y = -0.012, label = "Time 2")
+#m <-m + annotate("text", x = 0.01, y = -0.01, label = "Time 3")
+#m <-m + annotate("text", x = 0.045, y = -0.023, label = "Time 1")
+m <-m + annotate("text", x = 0.225, y = -0.34, label = "Genoptype: p  > 0.7")
+m<- m + labs(x= "NMDS2", y="NMDS1")
+#g <- m + ggtitle("Ordination by Genotype") + theme(plot.title = element_text(hjust = 0.5, size = 22))  
+g <- m 
+g
+```
+Phenotype
+```{r}
+adonis(psdist ~  phenotype, data = data.frame((samp_data)), permutations = 100)
+#not significant so no need to do pairwise comparisons. 
+#pairwise<-pairwise.adonis2(taxa_table ~ time_point, data = data.frame(samp_data), perm=1000, p.adjust.methods="bonferroni")
+#summary(pairwise)
+#pairwise
+
+ord<-ord
+#make the plot with everything 
+d <- gg_ordiplot(ord, samp_data$phenotype, choices = c(1, 2), kind = c("se"), conf = 0.95, show.groups = "all", ellipse = TRUE, label = FALSE, hull = FALSE, spiders = FALSE, plot = TRUE, pt.size = 1) 
+#pull out the ellipses
+df_ellipse <- d$df_ellipse
+ellipsep1 <- subset(df_ellipse, Group == "early", droplevels= TRUE)
+ellipsep2 <- subset(df_ellipse, Group == "late", droplevels= TRUE)
+ellipsep3 <- subset(df_ellipse, Group == "WT", droplevels= TRUE)
+
+
+
+#make the dataframe and subset out samples you dont want to plot
+test<-d$df_ord
+test$Sample_ID<-rownames(test)
+Herbicides<-data.frame(samp_data$Sampling_time, samp_data$phenotype, samp_data$Genotype, rownames(samp_data))
+names(Herbicides)<-c("Time", "Phenotype", "Genotype", "Sample_ID")
+test<-full_join(test, Herbicides)
+#test$Group=NULL
+names(test)<-c("x", "y","phenotype2","SampleID", "Time", "Phenotype", "Genotype")
+
+#make the ggplot scatter plot
+plot_test<-ggplot(test, aes(x=test$x, y=test$y), color=Phenotype) + scale_color_manual(values=c("#F564E3", "#619CFF", "#F8766D", "#009E73", "#000000")) + geom_point(aes(color=Phenotype, shape = Genotype))
+#add paths, color, and size, of the hulls
+plot_test <- plot_test +
+  geom_path(data= ellipsep1, aes(x=x, y=y), color="#F564E3", linetype="solid", size=1.0) +
+    geom_path(data= ellipsep2, aes(x=x, y=y), color="#619CFF", linetype="solid", size=1.0) +
+    geom_path(data= ellipsep3, aes(x=x, y=y), color="#F8766D", linetype="solid", size=1.0) 
+   
+#theme it on up
+plot_test<- plot_test + theme_classic()
+m<-plot_test 
+#m <-m + annotate("text", x = -0.05, y = -0.012, label = "Time 2")
+#m <-m + annotate("text", x = 0.01, y = -0.01, label = "Time 3")
+#m <-m + annotate("text", x = 0.045, y = -0.023, label = "Time 1")
+m <-m + annotate("text", x = 0.4, y = -0.5, label = "Time: P  = 0.27")
+m<- m + labs(x= "NMDS2", y="NMDS1")
+p <- m + ggtitle("Ordination by Phenotype") + theme(plot.title = element_text(hjust = 0.5, size = 22))  
+p
+```
+
+testing with nesting by developmental stage or by sampling time
+```{r}
+adonis(psdist ~ Sampling_time, data= data.frame((samp_data)), strata = samp_data$Developmental_stage, permutations = 1000)
+adonis(psdist ~ Sampling_time, data= data.frame((samp_data)), permutations = 1000)
+
+adonis(psdist ~ Developmental_stage, data= data.frame((samp_data)), strata = samp_data$Sampling_time, permutations = 1000)
+adonis(psdist ~ Developmental_stage, data= data.frame((samp_data)), permutations = 1000)
+```
+
+
+Flowering Status
+```{r}
+adonis(psdist ~ Sampling_time, data= data.frame((samp_data)), strata = samp_data$Developmental_stage, permutations = 1000)
+adonis(psdist ~  Sampling_time, data= data.frame((samp_data)), permutations = 1000)
+
+#if not significant so no need to do pairwise comparisons. 
+pairwise<-pairwise.adonis2(taxa_table ~ Developmental_stage, data = data.frame(samp_data), perm=1000, p.adjust.methods="bonferroni")
+summary(pairwise)
+pairwise
+
+ord<-ord
+#make the plot with everything 
+d <- gg_ordiplot(ord, samp_data$Developmental_stage, choices = c(1, 2), kind = c("se"), conf = 0.95, show.groups = "all", ellipse = TRUE, label = FALSE, hull = FALSE, spiders = FALSE, plot = TRUE, pt.size = 1) 
+#pull out the ellipses
+df_ellipse <- d$df_ellipse
+ellipses1 <- subset(df_ellipse, Group == "senesce", droplevels= TRUE)
+ellipses2 <- subset(df_ellipse, Group == "flowering", droplevels= TRUE)
+ellipses3 <- subset(df_ellipse, Group == "fruiting", droplevels= TRUE)
+#ellipses4 <- subset(df_ellipse, Group == "preflwr", droplevels= TRUE)
+ellipses5 <- subset(df_ellipse, Group == "vegetative", droplevels= TRUE)
+
+#+scale_colour_manual(values = c("#7FC97F", "#BEAED4", "#FDC086", "#386CB0"))
+
+#make the dataframe and subset out samples you dont want to plot
+test<-d$df_ord
+test$Sample_ID<-rownames(test)
+Herbicides<-data.frame(samp_data$Sampling_time, samp_data$phenotype, samp_data$Genotype, rownames(samp_data))
+names(Herbicides)<-c("Time", "Phenotype", "Genotype", "Sample_ID")
+test<-full_join(test, Herbicides)
+#test$Group=NULL
+names(test)<-c("x", "y","Developmental Stage","SampleID", "Time", "Phenotype", "Genotype")
+test$`Developmental Stage` <- factor(test$`Developmental Stage`, levels = c("vegetative",  "flowering", "fruiting","senesce"))
+#make the ggplot scatter plot
+#plot_test<-ggplot(test, aes(x=test$x, y=test$y), color=Developmental_stage) + scale_color_manual(values=c("#F564E3", "#619CFF", "#FDC086", "#386CB0")) + geom_point(aes(color= Developmental_stage, shape=Time))
+plot_test<-ggplot(test, aes(x=test$x, y=test$y), color=`Developmental Stage`) + scale_color_manual(values=c("#7FC97F", "#BEAED4", "#F8766D","#386CB0" )) + geom_point(aes(color= `Developmental Stage`, shape=Time))
+#add paths, color, and size, of the hulls
+plot_test <- plot_test +
+  geom_path(data= ellipses1, aes(x=x, y=y), color="#7FC97F", linetype="solid", size=1.0) +
+    geom_path(data= ellipses2, aes(x=x, y=y), color="#BEAED4", linetype="solid", size=1.0) +
+    geom_path(data= ellipses3, aes(x=x, y=y), color="#FDC086", linetype="solid", size=1.0) +
+     #geom_path(data= ellipses4, aes(x=x, y=y), color="#009E73", linetype="solid", size=1.0) +
+    geom_path(data= ellipses5, aes(x=x, y=y), color="#386CB0", linetype="solid", size=1.0) 
+   
+#theme it on up
+plot_test<- plot_test + theme_classic()
+m<-plot_test 
+#m <-m + annotate("text", x = -0.05, y = -0.012, label = "Time 2")
+#m <-m + annotate("text", x = 0.01, y = -0.01, label = "Time 3")
+#m <-m + annotate("text", x = 0.045, y = -0.023, label = "Time 1")
+m <-m + annotate("text", x = 0.4, y = -0.5, label = "Developmental Stage: p < 0.01")
+m<- m + labs(x= "NMDS2", y="NMDS1")
+s <- m #+ scale_fill_discrete(name = "New Legend Title")#+ ggtitle("Ordination by Developmental Stage") + theme(plot.title = element_text(hjust = 0.5, size = 22))  
+s
+```
+
+```{r}
+grid.arrange(t, s, p, g)
+```
+#Split by time point and examine flowering status at each time point. 
+```{r}
+time1<- subset_samples(data_rarefied, Sampling_time == "T1")
+time2<- subset_samples(data_rarefied, Sampling_time == "T2")
+time3<- subset_samples(data_rarefied, Sampling_time == "T3")
+time4<- subset_samples(data_rarefied, Sampling_time == "T4")
+
+time1_t<- subset_samples(data_transformed, Sampling_time == "T1")
+time2_t<- subset_samples(data_transformed, Sampling_time == "T2")
+time3_t<- subset_samples(data_transformed, Sampling_time == "T3")
+time4_t<- subset_samples(data_transformed, Sampling_time == "T4")
+```
+
+Diversity (alpha and beta) split by time point and examining impact of flowering status 
+Time 1
+```{r}
+mic.assmblg <- time1
+results <- estimate_richness(time1, measures = c('Shannon', 'Simpson', 'Observed'))
+d <- sample_data(time1)
+
+#sample_data(time1)$status <-  factor(sample_data(time1)$status, levels = c("veg", "preflwr"), ordered = T)
+
+#by time point
+time1_status_alpha <- plot_richness(time1, x = "Developmental_stage", measures=c("Shannon","Simpson", "Observed"), color='Developmental_stage') #, shape="time_point")
+#Pheno <- Pheno + scale_colour_manual(values = c("#CD6821","#CD6821","#CD6821","#CD6821","#158172","#158172","#158172","#158172","#214788","#214788","#214788","#214788")) 
+time1_status_alpha <- time1_status_alpha + geom_boxplot() + theme_bw()
+time1_status_alpha
+
+#At time 1 All samples are in the same developmental stage so no need for testing. 
+#shapiro.test(aov(results$Shannon~d$time_point)$residuals)
+#t1_shannon<-kruskal.test(results$Shannon~ factor(d$Developmental_stage))
+#dunnTest(results$Shannon~ factor(d$Developmental_stage), method = "bon")
+
+#shapiro.test(aov(results$Simpson~d$time_point)$residuals)
+#t1_simpson<-kruskal.test(results$Simpson~ factor(d$status))
+#dunnTest(results$Simpson~ factor(d$status), method = "bon")
+
+#shapiro.test(aov(results$Observed~d$time_point)$residuals)
+#Meets normality assumption but we will use kruskall wallis for congruency
+#t1_observed<-kruskal.test(results$Observed~ factor(d$status))
+#dunnTest(results$Observed~ factor(d$status), method = "bon")
+
+
+
+taxa_table<-otu_table(time1_t)
+samp_data <- sample_data(time1_t)
+psdist<-parDist(as.matrix(taxa_table), method = "bray")
+ord<-metaMDS(taxa_table, distance = "bray", k=3, trymax = 100, previous.best = T)
+stressplot(ord)
+
+#all vegetative at time one
+#adonis(psdist ~  Developmental_stage , data = data.frame((samp_data)))
+
+```
+Time 2
+```{r}
+mic.assmblg <- time2
+results <- estimate_richness(time2, measures = c('Shannon', 'Simpson', 'Observed'))
+d <- sample_data(time2)
+
+sample_data(time2)$Developmental_stage <-  factor(sample_data(time2)$Developmental_stage, levels = c("vegetative", "flowering"), ordered = T)
+
+
+#by time point 2 
+time2_status_alpha <- plot_richness(time2, x = "Developmental_stage", measures=c("Shannon","Simpson", "Observed"), color='Developmental_stage') #, shape="time_point")
+#Pheno <- Pheno + scale_colour_manual(values = c("#CD6821","#CD6821","#CD6821","#CD6821","#158172","#158172","#158172","#158172","#214788","#214788","#214788","#214788")) 
+time2_status_alpha <- time2_status_alpha + geom_boxplot() + theme_bw()
+time2_status_alpha
+
+#shapiro.test(aov(results$Shannon~d$time_point)$residuals)
+t2_shannon<-kruskal.test(results$Shannon~ factor(d$Developmental_stage))
+dunnTest(results$Shannon~ factor(d$Developmental_stage), method = "bon")
+
+#shapiro.test(aov(results$Simpson~d$time_point)$residuals)
+t2_simpson<-kruskal.test(results$Simpson~ factor(d$Developmental_stage))
+dunnTest(results$Simpson~ factor(d$Developmental_stage), method = "bon")
+
+#shapiro.test(aov(results$Observed~d$time_point)$residuals)
+#Meets normality assumption but we will use kruskall wallis for congruency
+t2_observed<-kruskal.test(results$Observed~ factor(d$Developmental_stage))
+dunnTest(results$Observed~ factor(d$Developmental_stage), method = "bon")
+
+
+
+#taxa_table<-otu_table(time2_t)
+#samp_data <- sample_data(time2_t)
+#psdist<-parDist(as.matrix(taxa_table), method = "bray")
+#ord<-metaMDS(taxa_table, distance = "bray", k=3, trymax = 100, previous.best = T)
+#stressplot(ord)
+
+#adonis(psdist ~  status , data = data.frame((samp_data)))
+#if not significant so no need to do pairwise comparisons. 
+#pairwise<-pairwise.adonis2(taxa_table ~ status, data = data.frame(samp_data), perm=1000, p.adjust.methods="bonferroni")
+#summary(pairwise)
+#pairwise
+```
+
+Time 3
+```{r}
+mic.assmblg <- time3
+results <- estimate_richness(time3, measures = c('Shannon', 'Simpson', 'Observed'))
+d <- sample_data(time3)
+
+sample_data(time3)$Developmental_stage <-  factor(sample_data(time3)$Developmental_stage, levels = c("vegetative", "flowering", "fruiting"), ordered = T)
+
+#by time point
+time3_status_alpha <- plot_richness(time3, x = "Developmental_stage", measures=c("Shannon","Simpson", "Observed"), color='Developmental_stage') #, shape="time_point")
+#Pheno <- Pheno + scale_colour_manual(values = c("#CD6821","#CD6821","#CD6821","#CD6821","#158172","#158172","#158172","#158172","#214788","#214788","#214788","#214788")) 
+time3_status_alpha <- time3_status_alpha + geom_boxplot() + theme_bw()
+time3_status_alpha
+
+#shapiro.test(aov(results$Shannon~d$time_point)$residuals)
+t3_shannon<-kruskal.test(results$Shannon~ factor(d$Developmental_stage))
+dunnTest(results$Shannon~ factor(d$Developmental_stage), method = "bon")
+
+#shapiro.test(aov(results$Simpson~d$time_point)$residuals)
+t3_simpson<-kruskal.test(results$Simpson~ factor(d$Developmental_stage))
+dunnTest(results$Simpson~ factor(d$Developmental_stage), method = "bon")
+
+#shapiro.test(aov(results$Observed~d$time_point)$residuals)
+#Meets normality assumption but we will use kruskall wallis for congruency
+t3_observed<-kruskal.test(results$Observed~ factor(d$Developmental_stage))
+dunnTest(results$Observed~ factor(d$Developmental_stage), method = "bon")
+
+
+
+#taxa_table<-otu_table(time3_t)
+#samp_data <- sample_data(time3_t)
+#psdist<-parDist(as.matrix(taxa_table), method = "bray")
+#ord<-metaMDS(taxa_table, distance = "bray", k=3, trymax = 100, previous.best = T)
+#stressplot(ord)
+
+#adonis(psdist ~  status , data = data.frame((samp_data)))
+#if not significant so no need to do pairwise comparisons. 
+#pairwise<-pairwise.adonis2(taxa_table ~ status, data = data.frame(samp_data), perm=1000, p.adjust.methods="bonferroni")
+#summary(pairwise)
+#pairwise
+```
+
+Time 4
+```{r}
+mic.assmblg <- time4
+results <- estimate_richness(time4, measures = c('Shannon', 'Simpson', 'Observed'))
+d <- sample_data(time4)
+
+sample_data(time4)$Developmental_stage <-  factor(sample_data(time4)$Developmental_stage, levels = c("vegetative", "flowering", "fruiting", "senesce"), ordered = T)
+
+
+#by time point
+time4_status_alpha <- plot_richness(time4, x = "Developmental_stage", measures=c("Shannon","Simpson", "Observed"), color='Developmental_stage') #, shape="time_point")
+#Pheno <- Pheno + scale_colour_manual(values = c("#CD6821","#CD6821","#CD6821","#CD6821","#158172","#158172","#158172","#158172","#214788","#214788","#214788","#214788")) 
+time4_status_alpha <- time4_status_alpha + geom_boxplot() + theme_bw()
+time4_status_alpha
+
+#shapiro.test(aov(results$Shannon~d$time_point)$residuals)
+t4_shannon<-kruskal.test(results$Shannon~ factor(d$Developmental_stage))
+dunnTest(results$Shannon~ factor(d$Developmental_stage), method = "bon")
+
+#shapiro.test(aov(results$Simpson~d$time_point)$residuals)
+t4_simpson<-kruskal.test(results$Simpson~ factor(d$Developmental_stage))
+dunnTest(results$Simpson~ factor(d$Developmental_stage), method = "bon")
+
+#shapiro.test(aov(results$Observed~d$time_point)$residuals)
+#Meets normality assumption but we will use kruskall wallis for congruency
+t4_observed<-kruskal.test(results$Observed~ factor(d$Developmental_stage))
+dunnTest(results$Observed~ factor(d$Developmental_stage), method = "bon")
+
+
+
+taxa_table<-otu_table(time4_t)
+samp_data <- sample_data(time4_t)
+psdist<-parDist(as.matrix(taxa_table), method = "bray")
+ord<-metaMDS(taxa_table, distance = "bray", k=3, trymax = 100, previous.best = T)
+stressplot(ord)
+
+adonis(psdist ~  Developmental_stage , data = data.frame((samp_data)), permutations = 1000)
+#if not significant so no need to do pairwise comparisons. 
+pairwise<-pairwise.adonis2(taxa_table ~ Developmental_stage, data = data.frame(samp_data), perm=1000, p.adjust.methods="bonferroni")
+#summary(pairwise)
+#pairwise
+```
