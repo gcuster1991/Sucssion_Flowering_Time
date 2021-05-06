@@ -86,15 +86,12 @@ timept <- timept + geom_boxplot() + theme_bw() +theme(strip.text.x = element_tex
 timept<-timept + scale_colour_manual(values = c( "#1B9E77", "#D95F02", "#7570B3", "#E7298A"))
 timept
 #non parametric testing of alpha diversity by time point
-shapiro.test(aov(results$Shannon~d$Sampling_time)$residuals)
 tp_shannon<-kruskal.test(results$Shannon~ factor(d$Sampling_time))
 dunnTest(results$Shannon~ factor(d$Sampling_time), method = "bon")
 
-shapiro.test(aov(results$Simpson~d$Sampling_time)$residuals)
 tp_simpson<-kruskal.test(results$Simpson~ factor(d$Sampling_time))
 dunnTest(results$Simpson~ factor(d$Sampling_time), method = "bon")
 
-shapiro.test(aov(results$Observed~d$Sampling_time)$residuals)
 tp_observed<-kruskal.test(results$Observed~ factor(d$Sampling_time))
 dunnTest(results$Observed~ factor(d$Sampling_time), method = "bon")
 ```
@@ -107,15 +104,12 @@ ft <- ft + geom_boxplot() + theme_bw()
 ft
 
 #Statistical testing of alpha diversity by phenotypes
-shapiro.test(aov(results$Shannon~d$phenotype)$residuals)
 tp_shannon<-kruskal.test(results$Shannon~ factor(d$phenotype))
 dunnTest(results$Shannon~ factor(d$phenotype), method = "bon")
 
-shapiro.test(aov(results$Simpson~d$phenotype)$residuals)
 tp_simpson<-kruskal.test(results$Simpson~ factor(d$phenotype))
 dunnTest(results$Simpson~ factor(d$phenotype), method = "bon")
 
-shapiro.test(aov(results$Observed~d$phenotype)$residuals)
 tp_observed<-kruskal.test(results$Observed~ factor(d$phenotype))
 dunnTest(results$Observed~ factor(d$phenotype), method = "bon")
 ```
@@ -142,15 +136,12 @@ results_t1 <- estimate_richness(mic.assmblg_T1, measures = c('Shannon', 'Simpson
 d_t1 <- sample_data(mic.assmblg_T1)
 
 #Statistical tests of alpha diversity at time point 1
-shapiro.test(aov(results$Shannon~d$genotype)$residuals)
 tp_shannon<-kruskal.test(results_t1$Shannon~ factor(d_t1$genotype))
 dunnTest(results_t1$Shannon~ factor(d_t1$genotype), method = "bon")
 
-shapiro.test(aov(results$Simpson~d$genotype)$residuals)
 tp_simpson<-kruskal.test(results_t1$Simpson~ factor(d_t1$genotype))
 dunnTest(results_t1$Simpson~ factor(d_t1$genotype), method = "bon")
 
-shapiro.test(aov(results$Observed~d$genotype)$residuals)
 tp_observed<-kruskal.test(results_t1$Observed~ factor(d_t1$genotype))
 dunnTest(results_t1$Observed~ factor(d_t1$genotype), method = "bon")
 ```
@@ -173,16 +164,12 @@ status <- status +scale_colour_manual(values = c("#7FC97F", "#BEAED4", "#FDC086"
 status
 #rotate axis
 
-shapiro.test(aov(results$Shannon~d$Developmental_stage)$residuals)
 tp_shannon<-kruskal.test(results$Shannon~ factor(d$Developmental_stage))
 dunnTest(results$Shannon~ factor(d$Developmental_stage), method = "bon")
 
-shapiro.test(aov(results$Simpson~d$Developmental_stage)$residuals)
 tp_simpson<-kruskal.test(results$Simpson~ factor(d$Developmental_stage))
 dunnTest(results$Simpson~ factor(d$Developmental_stage), method = "bon")
 
-shapiro.test(aov(results$Observed~d$Developmental_stage)$residuals)
-#Meets normality assumption but we will use kruskall wallis for congruency
 tp_observed<-kruskal.test(results$Observed~ factor(d$Developmental_stage))
 dunnTest(results$Observed~ factor(d$Developmental_stage), method = "bon")
 ```
@@ -228,7 +215,6 @@ names(dat)<-c("Group", "Phenotype", "Genotype", "Sample_ID")
 test<-full_join(test, dat)
 names(test)<-c("x", "y","Time","SampleID", "Phenotype", "Genotype")
 
-
 #make the ggplot scatter plot
 plot_test<-ggplot(test, aes(x=test$x, y=test$y), color=Time)  + geom_point(aes(color= Time, shape=Genotype)) + scale_color_manual(values=c("#1B9E77", "#D95F02", "#7570B3", "#E7298A"))
 #add paths, color, and size, of the hulls
@@ -238,7 +224,6 @@ plot_test <- plot_test +
   geom_path(data= ellipseT3, aes(x=x, y=y), color="#7570B3", linetype="solid", size=1.0) +
     geom_path(data= ellipseT4, aes(x=x, y=y), color="#E7298A", linetype="solid", size=1.0) 
 
-#theme it on up
 plot_test<- plot_test + theme_classic()
 m<-plot_test 
 m <-m + annotate("text", x = 0.4, y = -0.5, label = "Time: p < 0.001")
@@ -249,7 +234,7 @@ t
 
 This can be used to subset to individual time points. 
 ```{r}
-#run this if we want to subset to time 1:
+#run this if we want to subset to time 1 and look at beta diversity among genotypes at time 1 like we did for the alpha diversity. 
 #data_transformed_t1<-subset_samples(data_transformed, Sampling_time =="T1")
 #taxa_table<-data.frame(otu_table(data_transformed_t1))
 #samp_data <- data.frame(sample_data(data_transformed_t1))
@@ -258,13 +243,11 @@ This can be used to subset to individual time points.
 
 adonis(psdist ~ Genotype, data = data.frame((samp_data)), permutations = 100)
 #not significant so no need to do pairwise comparisons. 
-#pairwise<-pairwise.adonis2(taxa_table ~ time_point, data = data.frame(samp_data), perm=1000, p.adjust.methods="bonferroni")
-#summary(pairwise)
-#pairwise
+
+#create column with genotype and phenotype
 samp_data$Genotype <-  factor(samp_data$Genotype, levels = c( "CS3797 (TFL2-2, early)", "SALK_072930C (SVP-32, early)", "CS6673 (WT, WT)", "CS6230 (AP1-10, late)", "CS9869 (FT-10, late)"), ordered = T)
 
-ord<-ord
-#make the plot with everything 
+#make the plot with everything on it and we can subset from there. 
 d <- gg_ordiplot(ord, samp_data$Genotype, choices = c(1, 2), kind = c("se"), conf = 0.95, show.groups = "all", ellipse = TRUE, label = FALSE, hull = FALSE, spiders = FALSE, plot = TRUE, pt.size = 1) 
 #pull out the ellipses
 df_ellipse <- d$df_ellipse
@@ -274,14 +257,12 @@ ellipseG3 <- subset(df_ellipse, Group == "CS6673 (WT, WT)", droplevels= TRUE)
 ellipseG4 <- subset(df_ellipse, Group == "CS9869 (FT-10, late)", droplevels= TRUE)
 ellipseG5 <- subset(df_ellipse, Group == "SALK_072930C (SVP-32, early)", droplevels= TRUE)
 
-
-#make the dataframe and subset out samples you dont want to plot
+#make the dataframe and and rename for manual plotting with ggplot
 test<-d$df_ord
 test$Sample_ID<-rownames(test)
-Herbicides<-data.frame(samp_data$Sampling_time, samp_data$phenotype, samp_data$Genotype, rownames(samp_data))
-names(Herbicides)<-c("Time", "Phenotype", "Genotype", "Sample_ID")
-test<-full_join(test, Herbicides)
-#test$Group=NULL
+dat<-data.frame(samp_data$Sampling_time, samp_data$phenotype, samp_data$Genotype, rownames(samp_data))
+names(dat)<-c("Time", "Phenotype", "Genotype", "Sample_ID")
+test<-full_join(test, dat)
 names(test)<-c("x", "y","Genotype","SampleID", "Time", "Phenotype", "Genotype2")
 
 #make the ggplot scatter plot
@@ -293,15 +274,12 @@ plot_test <- plot_test +
     geom_path(data= ellipseG3, aes(x=x, y=y), color="#009E73", linetype="solid", size=1.0) +
     geom_path(data= ellipseG4, aes(x=x, y=y), color="#F0E442", linetype="solid", size=1.0) +
     geom_path(data= ellipseG5, aes(x=x, y=y), color="#0072B2", linetype="solid", size=1.0) 
-#theme it on up
+
 plot_test<- plot_test + theme_classic()
 m<-plot_test 
-#m <-m + annotate("text", x = -0.05, y = -0.012, label = "Time 2")
-#m <-m + annotate("text", x = 0.01, y = -0.01, label = "Time 3")
-#m <-m + annotate("text", x = 0.045, y = -0.023, label = "Time 1")
+
 m <-m + annotate("text", x = 0.225, y = -0.34, label = "Genoptype: p  > 0.7")
 m<- m + labs(x= "NMDS2", y="NMDS1")
-#g <- m + ggtitle("Ordination by Genotype") + theme(plot.title = element_text(hjust = 0.5, size = 22))  
 g <- m 
 g
 ```
@@ -309,12 +287,8 @@ Phenotype
 ```{r}
 adonis(psdist ~  phenotype, data = data.frame((samp_data)), permutations = 100)
 #not significant so no need to do pairwise comparisons. 
-#pairwise<-pairwise.adonis2(taxa_table ~ time_point, data = data.frame(samp_data), perm=1000, p.adjust.methods="bonferroni")
-#summary(pairwise)
-#pairwise
 
-ord<-ord
-#make the plot with everything 
+#make the plot with everything on it and we can subset from there. 
 d <- gg_ordiplot(ord, samp_data$phenotype, choices = c(1, 2), kind = c("se"), conf = 0.95, show.groups = "all", ellipse = TRUE, label = FALSE, hull = FALSE, spiders = FALSE, plot = TRUE, pt.size = 1) 
 #pull out the ellipses
 df_ellipse <- d$df_ellipse
@@ -322,15 +296,12 @@ ellipsep1 <- subset(df_ellipse, Group == "early", droplevels= TRUE)
 ellipsep2 <- subset(df_ellipse, Group == "late", droplevels= TRUE)
 ellipsep3 <- subset(df_ellipse, Group == "WT", droplevels= TRUE)
 
-
-
-#make the dataframe and subset out samples you dont want to plot
+#make the dataframe and and rename for manual plotting with ggplot
 test<-d$df_ord
 test$Sample_ID<-rownames(test)
-Herbicides<-data.frame(samp_data$Sampling_time, samp_data$phenotype, samp_data$Genotype, rownames(samp_data))
-names(Herbicides)<-c("Time", "Phenotype", "Genotype", "Sample_ID")
-test<-full_join(test, Herbicides)
-#test$Group=NULL
+dat<-data.frame(samp_data$Sampling_time, samp_data$phenotype, samp_data$Genotype, rownames(samp_data))
+names(dat)<-c("Time", "Phenotype", "Genotype", "Sample_ID")
+test<-full_join(test, dat)
 names(test)<-c("x", "y","phenotype2","SampleID", "Time", "Phenotype", "Genotype")
 
 #make the ggplot scatter plot
@@ -341,57 +312,36 @@ plot_test <- plot_test +
     geom_path(data= ellipsep2, aes(x=x, y=y), color="#619CFF", linetype="solid", size=1.0) +
     geom_path(data= ellipsep3, aes(x=x, y=y), color="#F8766D", linetype="solid", size=1.0) 
    
-#theme it on up
 plot_test<- plot_test + theme_classic()
 m<-plot_test 
-#m <-m + annotate("text", x = -0.05, y = -0.012, label = "Time 2")
-#m <-m + annotate("text", x = 0.01, y = -0.01, label = "Time 3")
-#m <-m + annotate("text", x = 0.045, y = -0.023, label = "Time 1")
 m <-m + annotate("text", x = 0.4, y = -0.5, label = "Time: P  = 0.27")
 m<- m + labs(x= "NMDS2", y="NMDS1")
 p <- m + ggtitle("Ordination by Phenotype") + theme(plot.title = element_text(hjust = 0.5, size = 22))  
 p
 ```
 
-testing with nesting by developmental stage or by sampling time
-```{r}
-adonis(psdist ~ Sampling_time, data= data.frame((samp_data)), strata = samp_data$Developmental_stage, permutations = 1000)
-adonis(psdist ~ Sampling_time, data= data.frame((samp_data)), permutations = 1000)
-
-adonis(psdist ~ Developmental_stage, data= data.frame((samp_data)), strata = samp_data$Sampling_time, permutations = 1000)
-adonis(psdist ~ Developmental_stage, data= data.frame((samp_data)), permutations = 1000)
-```
-
-
 Flowering Status
 ```{r}
-adonis(psdist ~ Sampling_time, data= data.frame((samp_data)), strata = samp_data$Developmental_stage, permutations = 1000)
 adonis(psdist ~  Sampling_time, data= data.frame((samp_data)), permutations = 1000)
-
-#if not significant so no need to do pairwise comparisons. 
 pairwise<-pairwise.adonis2(taxa_table ~ Developmental_stage, data = data.frame(samp_data), perm=1000, p.adjust.methods="bonferroni")
 summary(pairwise)
 pairwise
 
-ord<-ord
-#make the plot with everything 
+#make the plot with everything and go from there
 d <- gg_ordiplot(ord, samp_data$Developmental_stage, choices = c(1, 2), kind = c("se"), conf = 0.95, show.groups = "all", ellipse = TRUE, label = FALSE, hull = FALSE, spiders = FALSE, plot = TRUE, pt.size = 1) 
 #pull out the ellipses
 df_ellipse <- d$df_ellipse
 ellipses1 <- subset(df_ellipse, Group == "senesce", droplevels= TRUE)
 ellipses2 <- subset(df_ellipse, Group == "flowering", droplevels= TRUE)
 ellipses3 <- subset(df_ellipse, Group == "fruiting", droplevels= TRUE)
-#ellipses4 <- subset(df_ellipse, Group == "preflwr", droplevels= TRUE)
 ellipses5 <- subset(df_ellipse, Group == "vegetative", droplevels= TRUE)
 
-#+scale_colour_manual(values = c("#7FC97F", "#BEAED4", "#FDC086", "#386CB0"))
-
-#make the dataframe and subset out samples you dont want to plot
+#make the dataframe and and rename for manual plotting with ggplot
 test<-d$df_ord
 test$Sample_ID<-rownames(test)
-Herbicides<-data.frame(samp_data$Sampling_time, samp_data$phenotype, samp_data$Genotype, rownames(samp_data))
-names(Herbicides)<-c("Time", "Phenotype", "Genotype", "Sample_ID")
-test<-full_join(test, Herbicides)
+dat<-data.frame(samp_data$Sampling_time, samp_data$phenotype, samp_data$Genotype, rownames(samp_data))
+names(dat)<-c("Time", "Phenotype", "Genotype", "Sample_ID")
+test<-full_join(test, dat)
 #test$Group=NULL
 names(test)<-c("x", "y","Developmental Stage","SampleID", "Time", "Phenotype", "Genotype")
 test$`Developmental Stage` <- factor(test$`Developmental Stage`, levels = c("vegetative",  "flowering", "fruiting","senesce"))
@@ -403,24 +353,31 @@ plot_test <- plot_test +
   geom_path(data= ellipses1, aes(x=x, y=y), color="#7FC97F", linetype="solid", size=1.0) +
     geom_path(data= ellipses2, aes(x=x, y=y), color="#BEAED4", linetype="solid", size=1.0) +
     geom_path(data= ellipses3, aes(x=x, y=y), color="#FDC086", linetype="solid", size=1.0) +
-     #geom_path(data= ellipses4, aes(x=x, y=y), color="#009E73", linetype="solid", size=1.0) +
     geom_path(data= ellipses5, aes(x=x, y=y), color="#386CB0", linetype="solid", size=1.0) 
    
-#theme it on up
 plot_test<- plot_test + theme_classic()
 m<-plot_test 
-#m <-m + annotate("text", x = -0.05, y = -0.012, label = "Time 2")
-#m <-m + annotate("text", x = 0.01, y = -0.01, label = "Time 3")
-#m <-m + annotate("text", x = 0.045, y = -0.023, label = "Time 1")
 m <-m + annotate("text", x = 0.4, y = -0.5, label = "Developmental Stage: p < 0.01")
 m<- m + labs(x= "NMDS2", y="NMDS1")
-s <- m #+ scale_fill_discrete(name = "New Legend Title")#+ ggtitle("Ordination by Developmental Stage") + theme(plot.title = element_text(hjust = 0.5, size = 22))  
+s <- m 
 s
 ```
 
 ```{r}
 grid.arrange(t, s, p, g)
 ```
+
+##Strata argument for nesting of analyses
+testing with nesting by developmental stage or by sampling time
+```{r}
+adonis(psdist ~ Sampling_time, data= data.frame((samp_data)), strata = samp_data$Developmental_stage, permutations = 1000)
+adonis(psdist ~ Sampling_time, data= data.frame((samp_data)), permutations = 1000)
+
+adonis(psdist ~ Developmental_stage, data= data.frame((samp_data)), strata = samp_data$Sampling_time, permutations = 1000)
+adonis(psdist ~ Developmental_stage, data= data.frame((samp_data)), permutations = 1000)
+
+```
+
 #Split by time point and examine flowering status at each time point. 
 ```{r}
 time1<- subset_samples(data_rarefied, Sampling_time == "T1")
@@ -434,7 +391,7 @@ time3_t<- subset_samples(data_transformed, Sampling_time == "T3")
 time4_t<- subset_samples(data_transformed, Sampling_time == "T4")
 ```
 
-Diversity (alpha and beta) split by time point and examining impact of flowering status 
+Diversity (alpha and beta) split by time point and examining impact of Developmental stage 
 Time 1
 ```{r}
 mic.assmblg <- time1
@@ -449,31 +406,7 @@ time1_status_alpha <- plot_richness(time1, x = "Developmental_stage", measures=c
 time1_status_alpha <- time1_status_alpha + geom_boxplot() + theme_bw()
 time1_status_alpha
 
-#At time 1 All samples are in the same developmental stage so no need for testing. 
-#shapiro.test(aov(results$Shannon~d$time_point)$residuals)
-#t1_shannon<-kruskal.test(results$Shannon~ factor(d$Developmental_stage))
-#dunnTest(results$Shannon~ factor(d$Developmental_stage), method = "bon")
-
-#shapiro.test(aov(results$Simpson~d$time_point)$residuals)
-#t1_simpson<-kruskal.test(results$Simpson~ factor(d$status))
-#dunnTest(results$Simpson~ factor(d$status), method = "bon")
-
-#shapiro.test(aov(results$Observed~d$time_point)$residuals)
-#Meets normality assumption but we will use kruskall wallis for congruency
-#t1_observed<-kruskal.test(results$Observed~ factor(d$status))
-#dunnTest(results$Observed~ factor(d$status), method = "bon")
-
-
-
-taxa_table<-otu_table(time1_t)
-samp_data <- sample_data(time1_t)
-psdist<-parDist(as.matrix(taxa_table), method = "bray")
-ord<-metaMDS(taxa_table, distance = "bray", k=3, trymax = 100, previous.best = T)
-stressplot(ord)
-
-#all vegetative at time one
-#adonis(psdist ~  Developmental_stage , data = data.frame((samp_data)))
-
+#At time 1 All samples are in the same developmental stage so no need for statistical testing. 
 ```
 Time 2
 ```{r}
@@ -490,28 +423,25 @@ time2_status_alpha <- plot_richness(time2, x = "Developmental_stage", measures=c
 time2_status_alpha <- time2_status_alpha + geom_boxplot() + theme_bw()
 time2_status_alpha
 
-#shapiro.test(aov(results$Shannon~d$time_point)$residuals)
+
 t2_shannon<-kruskal.test(results$Shannon~ factor(d$Developmental_stage))
 dunnTest(results$Shannon~ factor(d$Developmental_stage), method = "bon")
 
-#shapiro.test(aov(results$Simpson~d$time_point)$residuals)
 t2_simpson<-kruskal.test(results$Simpson~ factor(d$Developmental_stage))
 dunnTest(results$Simpson~ factor(d$Developmental_stage), method = "bon")
 
-#shapiro.test(aov(results$Observed~d$time_point)$residuals)
-#Meets normality assumption but we will use kruskall wallis for congruency
 t2_observed<-kruskal.test(results$Observed~ factor(d$Developmental_stage))
 dunnTest(results$Observed~ factor(d$Developmental_stage), method = "bon")
 
 
 
-#taxa_table<-otu_table(time2_t)
-#samp_data <- sample_data(time2_t)
-#psdist<-parDist(as.matrix(taxa_table), method = "bray")
-#ord<-metaMDS(taxa_table, distance = "bray", k=3, trymax = 100, previous.best = T)
-#stressplot(ord)
+taxa_table<-otu_table(time2_t)
+samp_data <- sample_data(time2_t)
+psdist<-parDist(as.matrix(taxa_table), method = "bray")
+ord<-metaMDS(taxa_table, distance = "bray", k=3, trymax = 1000, previous.best = T)
+stressplot(ord)
 
-#adonis(psdist ~  status , data = data.frame((samp_data)))
+adonis(psdist ~  status , data = data.frame((samp_data)))
 #if not significant so no need to do pairwise comparisons. 
 #pairwise<-pairwise.adonis2(taxa_table ~ status, data = data.frame(samp_data), perm=1000, p.adjust.methods="bonferroni")
 #summary(pairwise)
