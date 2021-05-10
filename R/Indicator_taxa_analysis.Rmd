@@ -159,31 +159,23 @@ data_indic<-subset_taxa(physeq = data_rarefied_genus, colnames(data_rarefied_gen
 data_indic_table<-data.frame(otu_table(data_indic))
 data_indic_samp_data<-data.frame(sample_data(data_indic))
 
-# condense at family level
+# Bar plot condensed at family level with all indicators
 ps <- tax_glom(data_indic, "Family")
 #ps<-data_indic
 ps0 <- transform_sample_counts(ps, function(x) x / sum(x))
 ps1 <- merge_samples(ps0, "Sampling_time")
 ps2 <- transform_sample_counts(ps1, function(x) x / sum(x))
-#col_vector<-c(col_vector , col_vector, col_vector, col_vector)
-#all_indic_bar_plot<-plot_bar(ps2, fill="Genus") + scale_fill_manual(values = col_vector)
-#all_indic_bar_plot_family<-plot_bar(ps2, fill="Family") + scale_fill_manual(values = col_vector)
 all_indic_bar_plot_family<-plot_bar(ps2, fill="Family") + scale_fill_manual(values = col_vector)
 
-
+# Bar plot condensed at family level with only those indicators with greater than 0.5% abundance
 ps <- tax_glom(data_indic, "Family")
 ps0  <- transform_sample_counts(ps, function(x) x / sum(x) )
 ps0_5 <- filter_taxa(ps0, function(x) sum(x) > 0.5, TRUE)
 ps1 <- merge_samples(ps0_5, "Sampling_time")
 ps2 <- transform_sample_counts(ps1, function(x) x / sum(x))
-#col_vector<-c(col_vector , col_vector, col_vector, col_vector)
-#common_indic_bar_plot<-plot_bar(ps2, fill="Genus") + scale_fill_manual(values = col_vector)
-#common_indic_bar_plot_family<-plot_bar(ps2, fill="Family") + scale_fill_manual(values = col_vector) + ggtitle("Common Indicator at Family Level") + theme(plot.title = element_text(hjust = 0.5, size = 22))  
 common_indic_bar_plot_family<-plot_bar(ps2, fill="Family") + scale_fill_manual(values = col_vector) 
 common_indic_bar_plot_family <- common_indic_bar_plot_family + theme_bw() +  theme(axis.text.x = element_text(color="black", size=10, angle=45, hjust=1),
           axis.text.y = element_text(color="black", size=10, angle=45)) + scale_x_discrete(name ="Sampling Time") + ylab("Relative Abundance") + theme(axis.text=element_text(size=12)) 
-
-common_indic_bar_plot_family
 ```
 
 Unique indicator taxa by time point. This also contains all indicators but i figure only those unique to a given time would be of interest. I widdle this list down to taxa that are only indicators of a single time point. 
