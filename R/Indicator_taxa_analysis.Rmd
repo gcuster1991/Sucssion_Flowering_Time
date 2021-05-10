@@ -15,6 +15,7 @@ library(ggordiplots)
 library(tidyverse)
 library(vegan)
 library(RColorBrewer)
+library(metagMisc)
 
 #loaded original and then subset to only what we needed to keep
 #load("~/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/MicroFloweringTime_Env.RData")
@@ -159,63 +160,50 @@ data_indic<-subset_taxa(physeq = data_rarefied_genus, colnames(data_rarefied_gen
 data_indic_table<-data.frame(otu_table(data_indic))
 data_indic_samp_data<-data.frame(sample_data(data_indic))
 
-# condense at family level
+# Bar plot condensed at family level with all indicators
 ps <- tax_glom(data_indic, "Family")
 #ps<-data_indic
 ps0 <- transform_sample_counts(ps, function(x) x / sum(x))
 ps1 <- merge_samples(ps0, "Sampling_time")
 ps2 <- transform_sample_counts(ps1, function(x) x / sum(x))
-#col_vector<-c(col_vector , col_vector, col_vector, col_vector)
-#all_indic_bar_plot<-plot_bar(ps2, fill="Genus") + scale_fill_manual(values = col_vector)
-#all_indic_bar_plot_family<-plot_bar(ps2, fill="Family") + scale_fill_manual(values = col_vector)
 all_indic_bar_plot_family<-plot_bar(ps2, fill="Family") + scale_fill_manual(values = col_vector)
 
-
+# Bar plot condensed at family level with only those indicators with greater than 0.5% abundance
 ps <- tax_glom(data_indic, "Family")
 ps0  <- transform_sample_counts(ps, function(x) x / sum(x) )
 ps0_5 <- filter_taxa(ps0, function(x) sum(x) > 0.5, TRUE)
 ps1 <- merge_samples(ps0_5, "Sampling_time")
 ps2 <- transform_sample_counts(ps1, function(x) x / sum(x))
-#col_vector<-c(col_vector , col_vector, col_vector, col_vector)
-#common_indic_bar_plot<-plot_bar(ps2, fill="Genus") + scale_fill_manual(values = col_vector)
-#common_indic_bar_plot_family<-plot_bar(ps2, fill="Family") + scale_fill_manual(values = col_vector) + ggtitle("Common Indicator at Family Level") + theme(plot.title = element_text(hjust = 0.5, size = 22))  
 common_indic_bar_plot_family<-plot_bar(ps2, fill="Family") + scale_fill_manual(values = col_vector) 
 common_indic_bar_plot_family <- common_indic_bar_plot_family + theme_bw() +  theme(axis.text.x = element_text(color="black", size=10, angle=45, hjust=1),
           axis.text.y = element_text(color="black", size=10, angle=45)) + scale_x_discrete(name ="Sampling Time") + ylab("Relative Abundance") + theme(axis.text=element_text(size=12)) 
-
-common_indic_bar_plot_family
 ```
 
-Unique indicator taxa by time point. This also contains all indicators but i figure only those unique to a given time would be of interest. I widdle this list down to taxa that are only indicators of a single time point. 
+Subset the indicators to only those taxa that are unique to single time point.
 ```{r}
+#create phyloseq object that contains only indicator taxa from all copmarisons
 data_indic<-subset_taxa(physeq = data_rarefied_genus, colnames(data_rarefied_genus@otu_table) %in% c(rownames(sigtabT12), rownames(sigtabT1T3), rownames(sigtabT14), rownames(sigtabT23), rownames(sigtabT24), rownames(sigtabT34)))
 
+#extract otu table and metadata
 data_indic_table<-data.frame(otu_table(data_indic))
 data_indic_samp_data<-data.frame(sample_data(data_indic))
 
 #check to make sure a postive number in logchange indicates the second category is higher.
-boxplot(data_indic_table$ACGAACCGAGCGAACGTTGTTCGGAATCACTGGGCTTAAAGGGCGCGTAGGCGGGCGGCTAAGTCTGTGGTGAAATCCTCCAGCTCAACTGGAGAACTGCCATGGATACTGGTTGTCTCGAGGAAGGTAGGGGTATGCGGAACTATCGGTGGAGCGGTGAAATGCGTTGATATCGATAGGAACTCCGGTGGCGAAGGCGGCATACTGGACCTTTTCTGACGCTGAGGCGCGAAAGCCAGGGGAGCAAACGGGATTAGATACCCCGGTAGTCCTGGCCCTAAACGATGGGTACTAGCTAGTAGGGTTCACATGGCTTTACTGGCGAAGCAAAAGTGCTAAGTACCCCGCCTGGGGAGTATGGTCGCAAGGCTGAA ~ data_indic_samp_data$time_point)
+#boxplot(data_indic_table$ACGAACCGAGCGAACGTTGTTCGGAATCACTGGGCTTAAAGGGCGCGTAGGCGGGCGGCTAAGTCTGTGGTGAAATCCTCCAGCTCAACTGGAGAACTGCCATGGATACTGGTTGTCTCGAGGAAGGTAGGGGTATGCGGAACTATCGGTGGAGCGGTGAAATGCGTTGATATCGATAGGAACTCCGGTGGCGAAGGCGGCATACTGGACCTTTTCTGACGCTGAGGCGCGAAAGCCAGGGGAGCAAACGGGATTAGATACCCCGGTAGTCCTGGCCCTAAACGATGGGTACTAGCTAGTAGGGTTCACATGGCTTTACTGGCGAAGCAAAAGTGCTAAGTACCCCGCCTGGGGAGTATGGTCGCAAGGCTGAA ~ data_indic_samp_data$time_point)
 
 
 #tableing the indicator taxa time
 #time 1 indicators 
 t1_2_sig<-sigtabT12[sigtabT12$log2FoldChange >= 0,]
 a<-rownames(t1_2_sig)
-
 t1_3_sig<-sigtabT1T3[sigtabT1T3$log2FoldChange >= 0,]
 b<-rownames(t1_3_sig)
-
 t1_4_sig<-sigtabT14[sigtabT14$log2FoldChange >= 0,]
 c<-rownames(t1_4_sig)
 d<-c(a,b,c)
 e<-unique(d)
-
 Time1_indicators<- subset_taxa(physeq = data_indic, colnames(data_indic@otu_table) %in% e)
-#ps1 <- merge_samples(Time1_indicators, "time_point")
-#ps2 <- transform_sample_counts(ps1, function(x) x / sum(x))
-#plot_bar(ps2, fill = "Family") + scale_fill_manual(values = col_vector)
 
-library(metagMisc)
 Time1_test<-phyloseq_to_df(Time1_indicators, addtax = T)
 sort(table(Time1_test$Phylum))
 
@@ -263,10 +251,12 @@ str(Time4_test)
 table(Time1_test$OTU %in% c(Time2_test$OTU,Time3_test$OTU, Time4_test$OTU))
 which(!Time1_test$OTU %in% c(Time2_test$OTU,Time3_test$OTU, Time4_test$OTU))
 unique_to_T1<-Time1_test[which(!Time1_test$OTU %in% c(Time2_test$OTU,Time3_test$OTU, Time4_test$OTU)),]
+#table gives us counts of unique indicators and the counts at each level of taxonomy. 
 table(unique_to_T1$Phylum)
 table(unique_to_T1$Class)
 table(unique_to_T1$Order)
 table(unique_to_T1$Family)
+
 
 table(Time2_test$OTU %in% c(Time1_test$OTU,Time3_test$OTU, Time4_test$OTU))
 which(!Time2_test$OTU %in% c(Time1_test$OTU,Time3_test$OTU, Time4_test$OTU))
@@ -298,27 +288,8 @@ unique_to_single_time<-rbind(unique_to_T1, unique_to_T2, unique_to_T3, unique_to
 
 ```
 
-Not using currently but will keep for later date if needed 
+#ITHNK THIS SHOULD BE REMOVED> Abundance bar plots by time -- includes all taxa
 ```{#r}
-#make box n whisker plot of phylum for summarized time point data
-silk_workingr <- transform_sample_counts(time_merged, function(x) x/sum(x))
-# agglomerate taxa
-glom <- tax_glom(silk_workingr, taxrank = 'Phylum')
-#create dataframe
-dat <- psmelt(glom)
-#make phylum a character
-dat$Phylum <- as.character(dat$Phylum)
-library(plyr)
-medians <- ddply(dat, ~Phylum, function(x) c(median=median(x$Abundance)))
-remainder <- medians[medians$median <= 0.0001,]$Phylum
-dat[dat$Phylum %in% remainder,]$Phylum <- 'Remainder'
-ggplot(dat,
-       aes(x=Phylum,
-           y=Abundance)) + geom_boxplot() + coord_flip()
-```
-
-Abundance bar plots by time -- includes all taxa
-```{r}
 
 #all taxa reduced to phylum
 ps <- tax_glom(data.bac, "Family")
@@ -405,9 +376,7 @@ geno_phylum <-plot_bar(ps2, fill="Phylum") + scale_fill_manual(values = col_vect
 geno_family <-plot_bar(ps2, fill="Family") + scale_fill_manual(values = col_vector)
 ```
 
-With only a few indicator taxa for genotype i didnt bother making the bar plots for them. 
-
-Indicator analysis for flowering status
+Indicator analysis for developmental stage
 ```{r}
 data_rarefied_genus <- tax_glom(data_rarefied, "Genus")
 
