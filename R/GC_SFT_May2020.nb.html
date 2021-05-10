@@ -218,76 +218,18 @@ pre code {
 <p>Below is a link to the reasoning for same statistics for strata argument. <a href="http://r-sig-ecology.471788.n2.nabble.com/Adonis-output-with-or-without-strata-td7580521.html" class="uri">http://r-sig-ecology.471788.n2.nabble.com/Adonis-output-with-or-without-strata-td7580521.html</a></p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShnZ3Bsb3QyKSBcbmxpYnJhcnkocGh5bG9zZXEpXG5saWJyYXJ5KGdyaWRFeHRyYSlcbmxpYnJhcnkoRW52U3RhdHMpXG5gYGAifQ== -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShnZ3Bsb3QyKSBcbmxpYnJhcnkocGh5bG9zZXEpXG5saWJyYXJ5KGdyaWRFeHRyYSlcbmxpYnJhcnkoRW52U3RhdHMpXG5saWJyYXJ5KEZTQSlcbmxpYnJhcnkocGFyYWxsZWxEaXN0KVxubGlicmFyeShwYWlyd2lzZUFkb25pcylcbmxpYnJhcnkoZ2dvcmRpcGxvdHMpXG5saWJyYXJ5KHRpZHl2ZXJzZSlcbmxpYnJhcnkodmVnYW4pXG5saWJyYXJ5KFJDb2xvckJyZXdlcilcbmBgYCJ9 -->
 <pre class="r"><code>library(ggplot2) 
 library(phyloseq)
 library(gridExtra)
-library(EnvStats)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiXG5BdHRhY2hpbmcgcGFja2FnZTog4oCYRW52U3RhdHPigJlcblxuVGhlIGZvbGxvd2luZyBvYmplY3RzIGFyZSBtYXNrZWQgZnJvbSDigJhwYWNrYWdlOnN0YXRz4oCZOlxuXG4gICAgcHJlZGljdCwgcHJlZGljdC5sbVxuXG5UaGUgZm9sbG93aW5nIG9iamVjdCBpcyBtYXNrZWQgZnJvbSDigJhwYWNrYWdlOmJhc2XigJk6XG5cbiAgICBwcmludC5kZWZhdWx0XG4ifQ== -->
-<pre><code>
-Attaching package: ‘EnvStats’
-
-The following objects are masked from ‘package:stats’:
-
-    predict, predict.lm
-
-The following object is masked from ‘package:base’:
-
-    print.default</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShGU0EpXG5gYGAifQ== -->
-<pre class="r"><code>library(FSA)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiIyMgRlNBIHYwLjguMzIuIFNlZSBjaXRhdGlvbignRlNBJykgaWYgdXNlZCBpbiBwdWJsaWNhdGlvbi5cbiMjIFJ1biBmaXNoUigpIGZvciByZWxhdGVkIHdlYnNpdGUgYW5kIGZpc2hSKCdJRkFSJykgZm9yIHJlbGF0ZWQgYm9vay5cbiJ9 -->
-<pre><code>## FSA v0.8.32. See citation('FSA') if used in publication.
-## Run fishR() for related website and fishR('IFAR') for related book.</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShwYXJhbGxlbERpc3QpXG5saWJyYXJ5KHBhaXJ3aXNlQWRvbmlzKVxuYGBgIn0= -->
-<pre class="r"><code>library(parallelDist)
-library(pairwiseAdonis)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiTG9hZGluZyByZXF1aXJlZCBwYWNrYWdlOiB2ZWdhblxuTG9hZGluZyByZXF1aXJlZCBwYWNrYWdlOiBwZXJtdXRlXG5Mb2FkaW5nIHJlcXVpcmVkIHBhY2thZ2U6IGxhdHRpY2VcblRoaXMgaXMgdmVnYW4gMi41LTdcblxuQXR0YWNoaW5nIHBhY2thZ2U6IOKAmHZlZ2Fu4oCZXG5cblRoZSBmb2xsb3dpbmcgb2JqZWN0IGlzIG1hc2tlZCBmcm9tIOKAmHBhY2thZ2U6RW52U3RhdHPigJk6XG5cbiAgICBjYWxpYnJhdGVcblxuTG9hZGluZyByZXF1aXJlZCBwYWNrYWdlOiBjbHVzdGVyXG4ifQ== -->
-<pre><code>Loading required package: vegan
-Loading required package: permute
-Loading required package: lattice
-This is vegan 2.5-7
-
-Attaching package: ‘vegan’
-
-The following object is masked from ‘package:EnvStats’:
-
-    calibrate
-
-Loading required package: cluster</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShnZ29yZGlwbG90cylcbmBgYCJ9 -->
-<pre class="r"><code>library(ggordiplots)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiTG9hZGluZyByZXF1aXJlZCBwYWNrYWdlOiBnbHVlXG4ifQ== -->
-<pre><code>Loading required package: glue</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeSh0aWR5dmVyc2UpXG5gYGAifQ== -->
-<pre class="r"><code>library(tidyverse)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiUmVnaXN0ZXJlZCBTMyBtZXRob2RzIG92ZXJ3cml0dGVuIGJ5ICdkYnBseXInOlxuICBtZXRob2QgICAgICAgICBmcm9tXG4gIHByaW50LnRibF9sYXp5ICAgICBcbiAgcHJpbnQudGJsX3NxbCAgICAgIFxuXHUwMDFiWzMwbeKUgOKUgCBcdTAwMWJbMW1BdHRhY2hpbmcgcGFja2FnZXNcdTAwMWJbMjJtIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgCB0aWR5dmVyc2UgMS4zLjEg4pSA4pSAXHUwMDFiWzM5bVxuXHUwMDFiWzMwbVx1MDAxYlszMm3inJNcdTAwMWJbMzBtIFx1MDAxYlszNG10aWJibGUgXHUwMDFiWzMwbSAzLjEuMSAgICAgXHUwMDFiWzMybeKck1x1MDAxYlszMG0gXHUwMDFiWzM0bWRwbHlyICBcdTAwMWJbMzBtIDEuMC41XG5cdTAwMWJbMzJt4pyTXHUwMDFiWzMwbSBcdTAwMWJbMzRtdGlkeXIgIFx1MDAxYlszMG0gMS4xLjMgICAgIFx1MDAxYlszMm3inJNcdTAwMWJbMzBtIFx1MDAxYlszNG1zdHJpbmdyXHUwMDFiWzMwbSAxLjQuMFxuXHUwMDFiWzMybeKck1x1MDAxYlszMG0gXHUwMDFiWzM0bXJlYWRyICBcdTAwMWJbMzBtIDEuNC4wICAgICBcdTAwMWJbMzJt4pyTXHUwMDFiWzMwbSBcdTAwMWJbMzRtZm9yY2F0c1x1MDAxYlszMG0gMC41LjFcblx1MDAxYlszMm3inJNcdTAwMWJbMzBtIFx1MDAxYlszNG1wdXJyciAgXHUwMDFiWzMwbSAwLjMuNCAgICAgXHUwMDFiWzM5bVxuXHUwMDFiWzMwbeKUgOKUgCBcdTAwMWJbMW1Db25mbGljdHNcdTAwMWJbMjJtIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgCB0aWR5dmVyc2VfY29uZmxpY3RzKCkg4pSA4pSAXG5cdTAwMWJbMzFteFx1MDAxYlszMG0gXHUwMDFiWzM0bWRwbHlyXHUwMDFiWzMwbTo6XHUwMDFiWzMybWNvbGxhcHNlKClcdTAwMWJbMzBtIG1hc2tzIFx1MDAxYlszNG1nbHVlXHUwMDFiWzMwbTo6Y29sbGFwc2UoKVxuXHUwMDFiWzMxbXhcdTAwMWJbMzBtIFx1MDAxYlszNG1kcGx5clx1MDAxYlszMG06Olx1MDAxYlszMm1jb21iaW5lKClcdTAwMWJbMzBtICBtYXNrcyBcdTAwMWJbMzRtZ3JpZEV4dHJhXHUwMDFiWzMwbTo6Y29tYmluZSgpXG5cdTAwMWJbMzFteFx1MDAxYlszMG0gXHUwMDFiWzM0bWRwbHlyXHUwMDFiWzMwbTo6XHUwMDFiWzMybWZpbHRlcigpXHUwMDFiWzMwbSAgIG1hc2tzIFx1MDAxYlszNG1zdGF0c1x1MDAxYlszMG06OmZpbHRlcigpXG5cdTAwMWJbMzFteFx1MDAxYlszMG0gXHUwMDFiWzM0bWRwbHlyXHUwMDFiWzMwbTo6XHUwMDFiWzMybWxhZygpXHUwMDFiWzMwbSAgICAgIG1hc2tzIFx1MDAxYlszNG1zdGF0c1x1MDAxYlszMG06OmxhZygpXHUwMDFiWzM5bVxuIn0= -->
-<pre><code>Registered S3 methods overwritten by 'dbplyr':
-  method         from
-  print.tbl_lazy     
-  print.tbl_sql      
-[30m── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.1 ──[39m
-[30m[32m✓[30m [34mtibble [30m 3.1.1     [32m✓[30m [34mdplyr  [30m 1.0.5
-[32m✓[30m [34mtidyr  [30m 1.1.3     [32m✓[30m [34mstringr[30m 1.4.0
-[32m✓[30m [34mreadr  [30m 1.4.0     [32m✓[30m [34mforcats[30m 0.5.1
-[32m✓[30m [34mpurrr  [30m 0.3.4     [39m
-[30m── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
-[31mx[30m [34mdplyr[30m::[32mcollapse()[30m masks [34mglue[30m::collapse()
-[31mx[30m [34mdplyr[30m::[32mcombine()[30m  masks [34mgridExtra[30m::combine()
-[31mx[30m [34mdplyr[30m::[32mfilter()[30m   masks [34mstats[30m::filter()
-[31mx[30m [34mdplyr[30m::[32mlag()[30m      masks [34mstats[30m::lag()[39m</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeSh2ZWdhbilcbmBgYCJ9 -->
-<pre class="r"><code>library(vegan)</code></pre>
+library(EnvStats)
+library(FSA)
+library(parallelDist)
+library(pairwiseAdonis)
+library(ggordiplots)
+library(tidyverse)
+library(vegan)
+library(RColorBrewer)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
