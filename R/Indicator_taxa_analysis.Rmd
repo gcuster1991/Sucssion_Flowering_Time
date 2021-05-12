@@ -667,6 +667,7 @@ T1_indic_veg$Genus = factor(as.character(T1_indic_veg$Genus), levels=names(x))
 T1_indic_plot<-ggplot(T1_indic_veg, aes(x=Genus, y=Change..log2.fold., color=Class)) + geom_point(size=6) + 
   theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5)) + ylab("Change Log2 fold")+ theme(axis.text.x = element_text(angle=90, hjust =0.5))
 T1_indic_plot
+ggsave("../figures/T1_indicators.pdf")
 ```
 
 T2
@@ -687,6 +688,7 @@ T2_indic_veg$Genus = factor(as.character(T2_indic_veg$Genus), levels=names(x))
 T2_indic_plot<-ggplot(T2_indic_veg, aes(x=Genus, y=Change..log2.fold., color=Class)) + geom_point(size=6) + 
   theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))  + ylab("Change Log2 fold")+ theme(axis.text.x = element_text(angle=90, hjust =0.5))
 T2_indic_plot
+ggsave("../figures/T2_indicators.pdf", width = 12)
 ```
 
 T3 - all
@@ -707,6 +709,7 @@ T3_indic_veg$Genus = factor(as.character(T3_indic_veg$Genus), levels=names(x))
 T3_indic_plot<-ggplot(T3_indic_veg, aes(x=Genus, y=Change..log2.fold., color=Class)) + geom_point(size=6) + 
   theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))  + ylab("Change Log2 fold")+ theme(axis.text.x = element_text(angle=90, hjust =0.5))
 T3_indic_plot
+ggsave("../figures/T3_indicators.pdf", width = 16, height = 8)
 ```
 T3 unique
 ```{r}
@@ -726,6 +729,7 @@ T3_indic_veg$Genus = factor(as.character(T3_indic_veg$Genus), levels=names(x))
 T3_indic_plot<-ggplot(T3_indic_veg, aes(x=Genus, y=Change..log2.fold., color=Class)) + geom_point(size=6) + 
   theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))  + ylab("Change Log2 fold")+ theme(axis.text.x = element_text(angle=90, hjust =0.5))
 T3_indic_plot
+ggsave("../figures/T3_indicators_unique.pdf")
 ```
 T4
 ```{r}
@@ -745,6 +749,7 @@ T4_indic_veg$Genus = factor(as.character(T4_indic_veg$Genus), levels=names(x))
 T4_indic_plot<-ggplot(T4_indic_veg, aes(x=Genus, y=Change..log2.fold., color=Class)) + geom_point(size=6) + 
   theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))  + ylab("Change Log2 fold")+ theme(axis.text.x = element_text(angle=90, hjust =0.5))
 T4_indic_plot
+ggsave("../figures/T4_indicators.pdf", width = 16, height = 8 )
 ```
 
 ```{r}
@@ -764,6 +769,7 @@ T4_indic_veg$Genus = factor(as.character(T4_indic_veg$Genus), levels=names(x))
 T4_indic_plot<-ggplot(T4_indic_veg, aes(x=Genus, y=Change..log2.fold., color=Class)) + geom_point(size=6) + 
   theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))  + ylab("Change Log2 fold")+ theme(axis.text.x = element_text(angle=90, hjust =0.5))
 T4_indic_plot
+ggsave("../figures/T4_indicators_unique.pdf")
 ```
 
 
@@ -794,6 +800,7 @@ dev_indic_veg$Genus = factor(as.character(dev_indic_veg$Genus), levels=names(x))
 Veg_indic_plot<-ggplot(dev_indic_veg, aes(x=Genus, y=Change..log2.fold., color=Family)) + geom_point(size=6) + 
   theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5)) + ylim(-3,1) + ylab("Change Log2 fold")+ theme(axis.text.x = element_text(angle=90, hjust =0.5))
 Veg_indic_plot
+ggsave("../figures/veg_indicators.pdf")
 ```
 
 Flowering Stage
@@ -814,6 +821,7 @@ dev_indic_flower$Genus = factor(as.character(dev_indic_flower$Genus), levels=nam
 Flower_indic_plot<-ggplot(dev_indic_flower, aes(x=Genus, y=Change..log2.fold., color=Family)) + geom_point(size=6) + 
   theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))  + ylab("Change Log2 fold") + theme(axis.text.x = element_text(angle=90, hjust =0.5))
 Flower_indic_plot
+ggsave("../figures/flower_indicators.pdf", height = 6)
 ```
 
 Fruting Stage
@@ -834,6 +842,7 @@ dev_indic_fruit$Genus = factor(as.character(dev_indic_fruit$Genus), levels=names
 Fruiting_indic_plot<-ggplot(dev_indic_fruit, aes(x=Genus, y=Change..log2.fold., color=Family)) + geom_point(size=6) + 
   theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))  + ylab("Change Log2 fold") + theme(axis.text.x = element_text(angle=90, hjust =0.5))
 Fruiting_indic_plot
+ggsave("../figures/fruit_indicators.pdf", height = 6)
 ```
 Senesce Stage
 ```{r}
@@ -853,4 +862,5 @@ dev_indic_sen$Genus = factor(as.character(dev_indic_sen$Genus), levels=names(x))
 Senesce_indic_plot<-ggplot(dev_indic_sen, aes(x=Genus, y=Change..log2.fold., color=Family)) + geom_point(size=6) + 
   theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))  + ylab("Change Log2 fold") + theme(axis.text.x = element_text(angle=90, hjust =0.5))
 Senesce_indic_plot
+ggsave("../figures/senesce_indicators.pdf", height = 6)
 ```
