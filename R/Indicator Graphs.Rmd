@@ -1,0 +1,226 @@
+---
+title: "Indicator Graphs"
+output: html_notebook
+---
+
+Read in supplementary table of indicator taxa for time point
+```{r}
+time_indic<-read.csv("../data/Time_Point_Indicator.csv")
+#split taxonomy
+time_indic<-time_indic %>% separate(Taxonomy, sep=";", into=c( "Phylum","Class","Order","Family", "Genus" ))
+#split by developmental stage in each chunk below
+```
+
+T1 
+```{r}
+T1_indic_veg<-time_indic %>% filter(Indicator.group == "T1")
+theme_set(theme_bw())
+scale_fill_discrete <- function(palname = "Set1", ...) {
+    scale_fill_brewer(palette = palname, ...)
+}
+# Phylum order
+x = tapply(T1_indic_veg$Change..log2.fold., T1_indic_veg$Class, function(x) max(x))
+x = sort(x, TRUE)
+T1_indic_veg$Class = factor(as.character(T1_indic_veg$Class), levels=names(x))
+# Genus order
+x = tapply(T1_indic_veg$Change..log2.fold., T1_indic_veg$Genus, function(x) max(x))
+x = sort(x, TRUE)
+T1_indic_veg$Genus = factor(as.character(T1_indic_veg$Genus), levels=names(x))
+T1_indic_plot<-ggplot(T1_indic_veg, aes(x=Genus, y=Change..log2.fold., color=Class)) + geom_point(size=6) + 
+  theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5)) + ylab("Change Log2 fold")+ theme(axis.text.x = element_text(angle=90, hjust =0.5))
+T1_indic_plot
+ggsave("../figures/T1_indicators.pdf")
+```
+
+T2
+```{r}
+T2_indic_veg<-time_indic %>% filter(Indicator.group == "T2")
+theme_set(theme_bw())
+scale_fill_discrete <- function(palname = "Set1", ...) {
+    scale_fill_brewer(palette = palname, ...)
+}
+# Phylum order
+x = tapply(T2_indic_veg$Change..log2.fold., T2_indic_veg$Class, function(x) max(x))
+x = sort(x, TRUE)
+T2_indic_veg$Class = factor(as.character(T2_indic_veg$Class), levels=names(x))
+# Genus order
+x = tapply(T2_indic_veg$Change..log2.fold., T2_indic_veg$Genus, function(x) max(x))
+x = sort(x, TRUE)
+T2_indic_veg$Genus = factor(as.character(T2_indic_veg$Genus), levels=names(x))
+T2_indic_plot<-ggplot(T2_indic_veg, aes(x=Genus, y=Change..log2.fold., color=Class)) + geom_point(size=6) + 
+  theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))  + ylab("Change Log2 fold")+ theme(axis.text.x = element_text(angle=90, hjust =0.5))
+T2_indic_plot
+ggsave("../figures/T2_indicators.pdf", width = 12)
+```
+
+T3 - all
+```{r}
+T3_indic_veg<-time_indic %>% filter(Indicator.group == "T3")
+theme_set(theme_bw())
+scale_fill_discrete <- function(palname = "Set1", ...) {
+    scale_fill_brewer(palette = palname, ...)
+}
+# Phylum order
+x = tapply(T3_indic_veg$Change..log2.fold., T3_indic_veg$Class, function(x) max(x))
+x = sort(x, TRUE)
+T3_indic_veg$Class = factor(as.character(T3_indic_veg$Class), levels=names(x))
+# Genus order
+x = tapply(T3_indic_veg$Change..log2.fold., T3_indic_veg$Genus, function(x) max(x))
+x = sort(x, TRUE)
+T3_indic_veg$Genus = factor(as.character(T3_indic_veg$Genus), levels=names(x))
+T3_indic_plot<-ggplot(T3_indic_veg, aes(x=Genus, y=Change..log2.fold., color=Class)) + geom_point(size=6) + 
+  theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))  + ylab("Change Log2 fold")+ theme(axis.text.x = element_text(angle=90, hjust =0.5))
+T3_indic_plot
+ggsave("../figures/T3_indicators.pdf", width = 16, height = 8)
+```
+T3 unique
+```{r}
+T3_indic_veg<-time_indic %>% filter(Indicator.group == "T3" & Unique.to.group =="*") 
+theme_set(theme_bw())
+scale_fill_discrete <- function(palname = "Set1", ...) {
+    scale_fill_brewer(palette = palname, ...)
+}
+# Phylum order
+x = tapply(T3_indic_veg$Change..log2.fold., T3_indic_veg$Class, function(x) max(x))
+x = sort(x, TRUE)
+T3_indic_veg$Class = factor(as.character(T3_indic_veg$Class), levels=names(x))
+# Genus order
+x = tapply(T3_indic_veg$Change..log2.fold., T3_indic_veg$Genus, function(x) max(x))
+x = sort(x, TRUE)
+T3_indic_veg$Genus = factor(as.character(T3_indic_veg$Genus), levels=names(x))
+T3_indic_plot<-ggplot(T3_indic_veg, aes(x=Genus, y=Change..log2.fold., color=Class)) + geom_point(size=6) + 
+  theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))  + ylab("Change Log2 fold")+ theme(axis.text.x = element_text(angle=90, hjust =0.5))
+T3_indic_plot
+ggsave("../figures/T3_indicators_unique.pdf")
+```
+T4
+```{r}
+T4_indic_veg<-time_indic %>% filter(Indicator.group == "T4") 
+theme_set(theme_bw())
+scale_fill_discrete <- function(palname = "Set1", ...) {
+    scale_fill_brewer(palette = palname, ...)
+}
+# Phylum order
+x = tapply(T4_indic_veg$Change..log2.fold., T4_indic_veg$Class, function(x) max(x))
+x = sort(x, TRUE)
+T4_indic_veg$Class = factor(as.character(T4_indic_veg$Class), levels=names(x))
+# Genus order
+x = tapply(T4_indic_veg$Change..log2.fold., T4_indic_veg$Genus, function(x) max(x))
+x = sort(x, TRUE)
+T4_indic_veg$Genus = factor(as.character(T4_indic_veg$Genus), levels=names(x))
+T4_indic_plot<-ggplot(T4_indic_veg, aes(x=Genus, y=Change..log2.fold., color=Class)) + geom_point(size=6) + 
+  theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))  + ylab("Change Log2 fold")+ theme(axis.text.x = element_text(angle=90, hjust =0.5))
+T4_indic_plot
+ggsave("../figures/T4_indicators.pdf", width = 16, height = 8 )
+```
+
+```{r}
+T4_indic_veg<-time_indic %>% filter(Indicator.group == "T4" & Unique.to.group=="*") 
+theme_set(theme_bw())
+scale_fill_discrete <- function(palname = "Set1", ...) {
+    scale_fill_brewer(palette = palname, ...)
+}
+# Phylum order
+x = tapply(T4_indic_veg$Change..log2.fold., T4_indic_veg$Class, function(x) max(x))
+x = sort(x, TRUE)
+T4_indic_veg$Class = factor(as.character(T4_indic_veg$Class), levels=names(x))
+# Genus order
+x = tapply(T4_indic_veg$Change..log2.fold., T4_indic_veg$Genus, function(x) max(x))
+x = sort(x, TRUE)
+T4_indic_veg$Genus = factor(as.character(T4_indic_veg$Genus), levels=names(x))
+T4_indic_plot<-ggplot(T4_indic_veg, aes(x=Genus, y=Change..log2.fold., color=Class)) + geom_point(size=6) + 
+  theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))  + ylab("Change Log2 fold")+ theme(axis.text.x = element_text(angle=90, hjust =0.5))
+T4_indic_plot
+ggsave("../figures/T4_indicators_unique.pdf")
+```
+
+Read in supplementary table of indicator taxa for developmental stage
+```{r}
+dev_indic<-read.csv("../data/Developmental_Stage_Indicator.csv")
+#split taxonomy
+dev_indic<-dev_indic %>% separate(Taxonomy, sep=";", into=c( "Phylum","Class","Order","Family", "Genus" ))
+#split by developmental stage in each chunk below
+```
+
+Vegetative state
+```{r}
+dev_indic_veg<-dev_indic %>% filter(Indicator.group == "vegetative")
+theme_set(theme_bw())
+scale_fill_discrete <- function(palname = "Set1", ...) {
+    scale_fill_brewer(palette = palname, ...)
+}
+# Phylum order
+x = tapply(dev_indic_veg$Change..log2.fold., dev_indic_veg$Family, function(x) max(x))
+x = sort(x, TRUE)
+dev_indic_veg$Family = factor(as.character(dev_indic_veg$Family), levels=names(x))
+# Genus order
+x = tapply(dev_indic_veg$Change..log2.fold., dev_indic_veg$Genus, function(x) max(x))
+x = sort(x, TRUE)
+dev_indic_veg$Genus = factor(as.character(dev_indic_veg$Genus), levels=names(x))
+Veg_indic_plot<-ggplot(dev_indic_veg, aes(x=Genus, y=Change..log2.fold., color=Family)) + geom_point(size=6) + 
+  theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5)) + ylim(-3,1) + ylab("Change Log2 fold")+ theme(axis.text.x = element_text(angle=90, hjust =0.5))
+Veg_indic_plot
+ggsave("../figures/veg_indicators.pdf")
+```
+
+Flowering Stage
+```{r}
+dev_indic_flower<-dev_indic %>% filter(Indicator.group == "flowering")
+theme_set(theme_bw())
+scale_fill_discrete <- function(palname = "Set1", ...) {
+    scale_fill_brewer(palette = palname, ...)
+}
+# Phylum order
+x = tapply(dev_indic_flower$Change..log2.fold., dev_indic_flower$Family, function(x) max(x))
+x = sort(x, TRUE)
+dev_indic_flower$Family = factor(as.character(dev_indic_flower$Family), levels=names(x))
+# Genus order
+x = tapply(dev_indic_flower$Change..log2.fold., dev_indic_flower$Genus, function(x) max(x))
+x = sort(x, TRUE)
+dev_indic_flower$Genus = factor(as.character(dev_indic_flower$Genus), levels=names(x))
+Flower_indic_plot<-ggplot(dev_indic_flower, aes(x=Genus, y=Change..log2.fold., color=Family)) + geom_point(size=6) + 
+  theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))  + ylab("Change Log2 fold") + theme(axis.text.x = element_text(angle=90, hjust =0.5))
+Flower_indic_plot
+ggsave("../figures/flower_indicators.pdf", height = 6)
+```
+
+Fruiting Stage
+```{r}
+dev_indic_fruit<-dev_indic %>% filter(Indicator.group == "fruiting")
+theme_set(theme_bw())
+scale_fill_discrete <- function(palname = "Set1", ...) {
+    scale_fill_brewer(palette = palname, ...)
+}
+# Phylum order
+x = tapply(dev_indic_fruit$Change..log2.fold., dev_indic_fruit$Family, function(x) max(x))
+x = sort(x, TRUE)
+dev_indic_fruit$Family = factor(as.character(dev_indic_fruit$Family), levels=names(x))
+# Genus order
+x = tapply(dev_indic_fruit$Change..log2.fold., dev_indic_fruit$Genus, function(x) max(x))
+x = sort(x, TRUE)
+dev_indic_fruit$Genus = factor(as.character(dev_indic_fruit$Genus), levels=names(x))
+Fruiting_indic_plot<-ggplot(dev_indic_fruit, aes(x=Genus, y=Change..log2.fold., color=Family)) + geom_point(size=6) + 
+  theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))  + ylab("Change Log2 fold") + theme(axis.text.x = element_text(angle=90, hjust =0.5))
+Fruiting_indic_plot
+ggsave("../figures/fruit_indicators.pdf", height = 6)
+```
+Senescence Stage
+```{r}
+dev_indic_sen<-dev_indic %>% filter(Indicator.group == "senesce")
+theme_set(theme_bw())
+scale_fill_discrete <- function(palname = "Set1", ...) {
+    scale_fill_brewer(palette = palname, ...)
+}
+# Phylum order
+x = tapply(dev_indic_sen$Change..log2.fold., dev_indic_sen$Family, function(x) max(x))
+x = sort(x, TRUE)
+dev_indic_sen$Family = factor(as.character(dev_indic_sen$Family), levels=names(x))
+# Genus order
+x = tapply(dev_indic_sen$Change..log2.fold., dev_indic_sen$Genus, function(x) max(x))
+x = sort(x, TRUE)
+dev_indic_sen$Genus = factor(as.character(dev_indic_sen$Genus), levels=names(x))
+Senesce_indic_plot<-ggplot(dev_indic_sen, aes(x=Genus, y=Change..log2.fold., color=Family)) + geom_point(size=6) + 
+  theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))  + ylab("Change Log2 fold") + theme(axis.text.x = element_text(angle=90, hjust =0.5))
+Senesce_indic_plot
+ggsave("../figures/senesce_indicators.pdf", height = 6)
+```

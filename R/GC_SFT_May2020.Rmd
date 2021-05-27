@@ -1,0 +1,1355 @@
+---
+title: "Succession and Flowering Time"
+subtitle: "G. Custer 5-7-20"
+output: html_notebook
+---
+Below is a link to the reasoning for same statistics for strata argument. 
+http://r-sig-ecology.471788.n2.nabble.com/Adonis-output-with-or-without-strata-td7580521.html
+```{r}
+library(ggplot2) 
+library(phyloseq)
+library(gridExtra)
+library(EnvStats)
+library(FSA)
+library(parallelDist)
+library(pairwiseAdonis)
+library(ggordiplots)
+library(tidyverse)
+library(vegan)
+library(RColorBrewer)
+```
+
+Load environemnt
+```{r}
+#loaded original and then subset to only what we needed to keep
+#load("~/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/MicroFloweringTime_Env.RData")
+load("/Users/gordoncuster/Desktop/Manuscript Submissions/In Review/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/GC_SFT_May2020.RData")
+
+```
+read in new metadata
+```{r}
+meta_data<-read.csv("/Users/gordoncuster/Desktop/Manuscript Submissions/In Review/SuccessionFloweringTime/SuccessionFloweringTime/METADATA_successionVdevelop_7May20.csv")
+rownames(meta_data) <- meta_data$sampleID
+meta_data$Sample=NULL
+MAP =  sample_data(meta_data)
+```
+
+```{r}
+## MERGING INTO PHYLOSEQ OBJECT
+data <- merge_phyloseq(OTU,TAX,MAP)
+data
+```
+
+Subsetting to non-bacterial taxa
+```{r}
+## LOOKING AT CONTAMINATION AND UNASSIGNED SEQUENCES
+mitochondria_contaminants <- subset_taxa(data, Family == "Mitochondria") ## 118 ASVs of Mitochondria
+archaea_contaminants <- subset_taxa(data, Kingdom == "Archaea") ## 5 ASVs of Archaea
+#chloroplast_contaminants <- subset_taxa(data, Class == "Chloroplast")
+chloroplast_contaminants <- subset_taxa(data, Order == "Chloroplast") ## 104 chloroplasts
+eukaryota_contaminants <- subset_taxa(data, Kingdom == "Eukaryota")  ## 42 eukaryotic ASVs
+sequences_not_assigned_to_kingdom <- subset_taxa(data, is.na(Kingdom)) ##drop 37 ASVs not assigned at Kingdom level
+# ntaxa(chloroplast_contaminants)
+```
+
+Keep only bacterial taxa
+```{r}
+data.bac <- subset_taxa(data, Kingdom == "Bacteria")
+```
+
+Transform and rarefy
+```{r}
+#rarefy
+data_rarefied <- rarefy_even_depth(data.bac, sample.size= 77213, rngseed=(12), replace=F)
+#5 Samples removed
+#transform
+data_transformed <- transform_sample_counts(data.bac, function(x) x / sum(x) )
+data.bac
+data_rarefied
+data_transformed
+```
+##Alpha Diversity 
+```{r}
+#Prep data
+mic.assmblg <- data_rarefied
+results <- estimate_richness(mic.assmblg, measures = c('Shannon', 'Simpson', 'Observed'))
+d <- sample_data(mic.assmblg)
+```
+
+```{r}
+display.brewer.pal(n = 8, name = 'Dark2')
+brewer.pal(n = 8, name = "Dark2")
+#by time point
+timept <- plot_richness(mic.assmblg, x = "Sampling_time", measures=c("Shannon","Simpson", "Observed"), color='Sampling_time') + guides(color=guide_legend(title="Sampling Time"))#, shape="Sampling_time")
+#Pheno <- Pheno + scale_colour_manual(values = c("#CD6821","#CD6821","#CD6821","#CD6821","#158172","#158172","#158172","#158172","#214788","#214788","#214788","#214788")) 
+timept <- timept + geom_boxplot() + theme_bw() +theme(strip.text.x = element_text(size = 12, colour = "black", angle = 0)) +  theme(axis.text.x = element_text(color="black", size=10, angle=0),
+          axis.text.y = element_text(color="black", size=10, angle=45)) + scale_x_discrete(name ="Sampling Time") + theme(axis.text=element_text(size=12)) 
+timept<-timept + scale_colour_manual(values = c( "#1B9E77", "#D95F02", "#7570B3", "#E7298A"))
+timept
+
+
+shapiro.test(aov(results$Shannon~d$Sampling_time)$residuals)
+tp_shannon<-kruskal.test(results$Shannon~ factor(d$Sampling_time))
+dunnTest(results$Shannon~ factor(d$Sampling_time), method = "bon")
+
+shapiro.test(aov(results$Simpson~d$Sampling_time)$residuals)
+tp_simpson<-kruskal.test(results$Simpson~ factor(d$Sampling_time))
+dunnTest(results$Simpson~ factor(d$Sampling_time), method = "bon")
+
+shapiro.test(aov(results$Observed~d$Sampling_time)$residuals)
+#Meets normality assumption but we will use kruskall wallis for congruency
+tp_observed<-kruskal.test(results$Observed~ factor(d$Sampling_time))
+dunnTest(results$Observed~ factor(d$Sampling_time), method = "bon")
+```
+By phenotype aka flowering time
+```{r}
+#by flowering time
+ft <- plot_richness(mic.assmblg, x = "phenotype", measures=c("Shannon","Simpson", "Observed"), color='phenotype')  #, shape="time_point")
+#Pheno <- Pheno + scale_colour_manual(values = c("#CD6821","#CD6821","#CD6821","#CD6821","#158172","#158172","#158172","#158172","#214788","#214788","#214788","#214788")) 
+ft <- ft + geom_boxplot() + theme_bw()
+ft
+
+
+#shapiro.test(aov(results$Shannon~d$phenotype)$residuals)
+tp_shannon<-kruskal.test(results$Shannon~ factor(d$phenotype))
+dunnTest(results$Shannon~ factor(d$phenotype), method = "bon")
+#
+#shapiro.test(aov(results$Simpson~d$phenotype)$residuals)
+tp_simpson<-kruskal.test(results$Simpson~ factor(d$phenotype))
+dunnTest(results$Simpson~ factor(d$phenotype), method = "bon")
+
+#shapiro.test(aov(results$Observed~d$phenotype)$residuals)
+tp_observed<-kruskal.test(results$Observed~ factor(d$phenotype))
+dunnTest(results$Observed~ factor(d$phenotype), method = "bon")
+```
+By genotype
+```{r}
+#by genotype
+sample_data(mic.assmblg)$genotype_base <-  factor(sample_data(mic.assmblg)$genotype_base, levels = c( "CS3797", "SALK_072930C", "CS6673", "CS6230", "CS9869"), ordered = T)
+sample_data(mic.assmblg)$Genotype <-  factor(sample_data(mic.assmblg)$Genotype, levels = c( "CS3797 (TFL2-2, early)", "SALK_072930C (SVP-32, early)", "CS6673 (WT, WT)", "CS6230 (AP1-10, late)", "CS9869 (FT-10, late)"), ordered = T)
+
+#if we want to look at differences among samples at time 1 (all in veg stage) we can subset to only time 1 and replot same stuff.
+mic.assmblg_T1<-subset_samples(mic.assmblg, Sampling_time == "T1")
+
+geno <- plot_richness(mic.assmblg_T1, x = "genotype_base", measures=c("Shannon","Simpson", "Observed"), color='Genotype') + guides(color=guide_legend(title="Genotype"))#, shape="Sampling_time")
+#Pheno <- Pheno + scale_colour_manual(values = c("#CD6821","#CD6821","#CD6821","#CD6821","#158172","#158172","#158172","#158172","#214788","#214788","#214788","#214788")) 
+geno <- geno + geom_boxplot() + theme_bw() +theme(strip.text.x = element_text(size = 12, colour = "black", angle = 0)) +  theme(axis.text.x = element_text(color="black", size=8, angle=45, hjust=1),
+          axis.text.y = element_text(color="black", size=10, angle=45)) + scale_x_discrete(name ="Genotype") + theme(axis.text=element_text(size=12)) 
+#geno + scale_colour_manual(values = c("#CD6821","#158172","#214788","#F0E442", "#009E73", "#CC79A7")) 
+geno <- geno + scale_colour_manual(values = c( "#E69F00", "#56B4E9", "#009E73",
+          "#F0E442", "#0072B2"))
+geno
+
+
+
+#Pheno <- Pheno + scale_colour_manual(values = c("#CD6821","#CD6821","#CD6821","#CD6821","#158172","#158172","#158172","#158172","#214788","#214788","#214788","#214788")) 
+##timept <- timept + geom_boxplot() + theme_bw() +theme(strip.text.x = element_text(size = 12, colour = "black", angle = 0)) +  theme(axis.text.x = element_text(color="black", size=10, angle=0),
+#          axis.text.y = element_text(color="black", size=10, angle=45)) + scale_x_discrete(name ="Sampling Time") + theme(axis.text=element_text(size=12)) 
+#timept
+
+#rotate axis
+results_t1 <- estimate_richness(mic.assmblg_T1, measures = c('Shannon', 'Simpson', 'Observed'))
+d_t1 <- sample_data(mic.assmblg_T1)
+
+#shapiro.test(aov(results$Shannon~d$genotype)$residuals)
+tp_shannon<-kruskal.test(results_t1$Shannon~ factor(d_t1$genotype))
+dunnTest(results_t1$Shannon~ factor(d_t1$genotype), method = "bon")
+
+#shapiro.test(aov(results$Simpson~d$genotype)$residuals)
+tp_simpson<-kruskal.test(results_t1$Simpson~ factor(d_t1$genotype))
+dunnTest(results_t1$Simpson~ factor(d_t1$genotype), method = "bon")
+
+#shapiro.test(aov(results$Observed~d$genotype)$residuals)
+#Meets normality assumption but we will use kruskall wallis for congruency
+tp_observed<-kruskal.test(results_t1$Observed~ factor(d_t1$genotype))
+dunnTest(results_t1$Observed~ factor(d_t1$genotype), method = "bon")
+```
+flowering status
+```{r}
+display.brewer.all(colorblindFriendly = F)
+display.brewer.pal(n = 8, name = 'Accent')
+brewer.pal(n = 8, name = "Accent")
+
+sample_data(mic.assmblg)$Developmental_stage <-  factor(sample_data(mic.assmblg)$Developmental_stage, levels = c("vegetative", "flowering", "fruiting", "senesce"), ordered = T)
+#by genotype
+status <- plot_richness(mic.assmblg, x = "Developmental_stage", measures=c("Shannon","Simpson", "Observed"), color='Developmental_stage') + guides(color=guide_legend(title="Developmental Stage"))#, shape="Sampling_time")
+#Pheno <- Pheno + scale_colour_manual(values = c("#CD6821","#CD6821","#CD6821","#CD6821","#158172","#158172","#158172","#158172","#214788","#214788","#214788","#214788")) 
+status <- status + geom_boxplot() + theme_bw() +theme(strip.text.x = element_text(size = 12, colour = "black", angle = 0)) +  theme(axis.text.x = element_text(color="black", size=8, angle=45, hjust=1),
+          axis.text.y = element_text(color="black", size=10, angle=45)) + scale_x_discrete(name ="Developmental Stage") + theme(axis.text=element_text(size=12)) 
+status <- status +scale_colour_manual(values = c("#7FC97F", "#BEAED4", "#FDC086", "#386CB0"))
+status
+#rotate axis
+
+shapiro.test(aov(results$Shannon~d$Developmental_stage)$residuals)
+tp_shannon<-kruskal.test(results$Shannon~ factor(d$Developmental_stage))
+dunnTest(results$Shannon~ factor(d$Developmental_stage), method = "bon")
+
+shapiro.test(aov(results$Simpson~d$Developmental_stage)$residuals)
+tp_simpson<-kruskal.test(results$Simpson~ factor(d$Developmental_stage))
+dunnTest(results$Simpson~ factor(d$Developmental_stage), method = "bon")
+
+shapiro.test(aov(results$Observed~d$Developmental_stage)$residuals)
+#Meets normality assumption but we will use kruskall wallis for congruency
+tp_observed<-kruskal.test(results$Observed~ factor(d$Developmental_stage))
+dunnTest(results$Observed~ factor(d$Developmental_stage), method = "bon")
+```
+
+#Split by time point and look at flowering status within a given time point
+```{r}
+
+```
+
+##Multivariate
+Prep
+```{r}
+taxa_table<-data.frame(otu_table(data_transformed))
+samp_data <- data.frame(sample_data(data_transformed))
+psdist<-parDist(as.matrix(taxa_table), method = "bray")
+ord<-metaMDS(taxa_table, distance = "bray", k=3, trymax = 100, previous.best = T)
+stressplot(ord)
+#adonis(psdist ~ Genotype, data = data.frame((samp_data)), strata = samp_data$Genotype)
+```
+
+Time point and graph
+```{r}
+adonis(psdist ~ Sampling_time, data.frame((samp_data)), permutations = 1000)
+
+pairwise<-pairwise.adonis2(taxa_table ~ Sampling_time, data = data.frame(samp_data), perm=1000, p.adjust.methods="bonferroni")
+summary(pairwise)
+pairwise
+
+samp_data$Genotype <-  factor(samp_data$Genotype, levels = c( "CS3797 (TFL2-2, early)", "SALK_072930C (SVP-32, early)", "CS6673 (WT, WT)", "CS6230 (AP1-10, late)", "CS9869 (FT-10, late)"), ordered = T)
+
+ord<-ord
+#make the plot with everything 
+d <- gg_ordiplot(ord, samp_data$Sampling_time, choices = c(1, 2), kind = c("se"), conf = 0.95, show.groups = "all", ellipse = TRUE, label = FALSE, hull = FALSE, spiders = FALSE, plot = TRUE, pt.size = 1) 
+#pull out the ellipses
+df_ellipse <- d$df_ellipse
+ellipseT1 <- subset(df_ellipse, Group == "T1", droplevels= TRUE)
+ellipseT2 <- subset(df_ellipse, Group == "T2", droplevels= TRUE)
+ellipseT3 <- subset(df_ellipse, Group == "T3", droplevels= TRUE)
+ellipseT4 <- subset(df_ellipse, Group == "T4", droplevels= TRUE)
+
+#make the dataframe and subset out samples you dont want to plot
+test<-d$df_ord
+test$Sample_ID<-rownames(test)
+Herbicides<-data.frame(samp_data$Sampling_time, samp_data$phenotype, samp_data$Genotype, rownames(samp_data))
+names(Herbicides)<-c("Group", "Phenotype", "Genotype", "Sample_ID")
+test<-full_join(test, Herbicides)
+#test$Group=NULL
+names(test)<-c("x", "y","Time","SampleID", "Phenotype", "Genotype")
+
+#+ scale_colour_manual(values = c( "#1B9E77", "#D95F02", "#7570B3", "#E7298A"))
+
+#make the ggplot scatter plot
+plot_test<-ggplot(test, aes(x=test$x, y=test$y), color=Time)  + geom_point(aes(color= Time, shape=Genotype)) + scale_color_manual(values=c("#1B9E77", "#D95F02", "#7570B3", "#E7298A"))
+#add paths, color, and size, of the hulls
+plot_test <- plot_test +
+  geom_path(data= ellipseT1, aes(x=x, y=y), color="#1B9E77", linetype="solid", size=1.0) +
+    geom_path(data= ellipseT2, aes(x=x, y=y), color="#D95F02", linetype="solid", size=1.0) +
+  geom_path(data= ellipseT3, aes(x=x, y=y), color="#7570B3", linetype="solid", size=1.0) +
+    geom_path(data= ellipseT4, aes(x=x, y=y), color="#E7298A", linetype="solid", size=1.0) 
+
+#theme it on up
+plot_test<- plot_test + theme_classic()
+m<-plot_test 
+#m <-m + annotate("text", x = -0.05, y = -0.012, label = "Time 2")
+#m <-m + annotate("text", x = 0.01, y = -0.01, label = "Time 3")
+#m <-m + annotate("text", x = 0.045, y = -0.023, label = "Time 1")
+m <-m + annotate("text", x = 0.4, y = -0.5, label = "Time: p < 0.001")
+#m <- m + #ggtitle("NMDS of Infestation Stage and Soil Origin", ) +
+#  theme(plot.title = element_text(hjust = 0.5, size = 22)) + labs(shape="Soil Origin", colour="Infestation Stage")
+m <- m + labs(x= "NMDS2", y="NMDS1")
+#m + guides(colour=guide_legend(override.aes=list(linetype=c(2,rep(1,times=2)))))
+#t <- m + ggtitle("Ordination by Time") + theme(plot.title = element_text(hjust = 0.5, size = 22))  
+t <- m 
+t
+```
+This can be used to subset to individual time points. 
+```{r}
+#run this if we want to subset to time 1:
+#data_transformed_t1<-subset_samples(data_transformed, Sampling_time =="T1")
+#taxa_table<-data.frame(otu_table(data_transformed_t1))
+#samp_data <- data.frame(sample_data(data_transformed_t1))
+#psdist_t1<-parDist(as.matrix(taxa_table), method = "bray")
+#ord<-metaMDS(taxa_table, distance = "bray", k=3, trymax = 100, previous.best = T)
+
+
+
+adonis(psdist ~ Genotype, data = data.frame((samp_data)), permutations = 100)
+#not significant so no need to do pairwise comparisons. 
+#pairwise<-pairwise.adonis2(taxa_table ~ time_point, data = data.frame(samp_data), perm=1000, p.adjust.methods="bonferroni")
+#summary(pairwise)
+#pairwise
+samp_data$Genotype <-  factor(samp_data$Genotype, levels = c( "CS3797 (TFL2-2, early)", "SALK_072930C (SVP-32, early)", "CS6673 (WT, WT)", "CS6230 (AP1-10, late)", "CS9869 (FT-10, late)"), ordered = T)
+
+ord<-ord
+#make the plot with everything 
+d <- gg_ordiplot(ord, samp_data$Genotype, choices = c(1, 2), kind = c("se"), conf = 0.95, show.groups = "all", ellipse = TRUE, label = FALSE, hull = FALSE, spiders = FALSE, plot = TRUE, pt.size = 1) 
+#pull out the ellipses
+df_ellipse <- d$df_ellipse
+ellipseG1 <- subset(df_ellipse, Group == "CS3797 (TFL2-2, early)", droplevels= TRUE)
+ellipseG2 <- subset(df_ellipse, Group == "CS6230 (AP1-10, late)", droplevels= TRUE)
+ellipseG3 <- subset(df_ellipse, Group == "CS6673 (WT, WT)", droplevels= TRUE)
+ellipseG4 <- subset(df_ellipse, Group == "CS9869 (FT-10, late)", droplevels= TRUE)
+ellipseG5 <- subset(df_ellipse, Group == "SALK_072930C (SVP-32, early)", droplevels= TRUE)
+
+
+#make the dataframe and subset out samples you dont want to plot
+test<-d$df_ord
+test$Sample_ID<-rownames(test)
+Herbicides<-data.frame(samp_data$Sampling_time, samp_data$phenotype, samp_data$Genotype, rownames(samp_data))
+names(Herbicides)<-c("Time", "Phenotype", "Genotype", "Sample_ID")
+test<-full_join(test, Herbicides)
+#test$Group=NULL
+names(test)<-c("x", "y","Genotype","SampleID", "Time", "Phenotype", "Genotype2")
+
+#make the ggplot scatter plot
+plot_test<-ggplot(test, aes(x=test$x, y=test$y), color=Genotype)  + scale_color_manual(values=c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2")) + geom_point(aes(color= Genotype))
+#add paths, color, and size, of the hulls
+plot_test <- plot_test +
+    geom_path(data= ellipseG1, aes(x=x, y=y), color="#E69F00", linetype="solid", size=1.0) +
+    geom_path(data= ellipseG2, aes(x=x, y=y), color="#56B4E9", linetype="solid", size=1.0) +
+    geom_path(data= ellipseG3, aes(x=x, y=y), color="#009E73", linetype="solid", size=1.0) +
+    geom_path(data= ellipseG4, aes(x=x, y=y), color="#F0E442", linetype="solid", size=1.0) +
+    geom_path(data= ellipseG5, aes(x=x, y=y), color="#0072B2", linetype="solid", size=1.0) 
+#theme it on up
+plot_test<- plot_test + theme_classic()
+m<-plot_test 
+#m <-m + annotate("text", x = -0.05, y = -0.012, label = "Time 2")
+#m <-m + annotate("text", x = 0.01, y = -0.01, label = "Time 3")
+#m <-m + annotate("text", x = 0.045, y = -0.023, label = "Time 1")
+m <-m + annotate("text", x = 0.225, y = -0.34, label = "Genoptype: p  > 0.7")
+m<- m + labs(x= "NMDS2", y="NMDS1")
+#g <- m + ggtitle("Ordination by Genotype") + theme(plot.title = element_text(hjust = 0.5, size = 22))  
+g <- m 
+g
+```
+Phenotype
+```{r}
+adonis(psdist ~  phenotype, data = data.frame((samp_data)), permutations = 100)
+#not significant so no need to do pairwise comparisons. 
+#pairwise<-pairwise.adonis2(taxa_table ~ time_point, data = data.frame(samp_data), perm=1000, p.adjust.methods="bonferroni")
+#summary(pairwise)
+#pairwise
+
+ord<-ord
+#make the plot with everything 
+d <- gg_ordiplot(ord, samp_data$phenotype, choices = c(1, 2), kind = c("se"), conf = 0.95, show.groups = "all", ellipse = TRUE, label = FALSE, hull = FALSE, spiders = FALSE, plot = TRUE, pt.size = 1) 
+#pull out the ellipses
+df_ellipse <- d$df_ellipse
+ellipsep1 <- subset(df_ellipse, Group == "early", droplevels= TRUE)
+ellipsep2 <- subset(df_ellipse, Group == "late", droplevels= TRUE)
+ellipsep3 <- subset(df_ellipse, Group == "WT", droplevels= TRUE)
+
+
+
+#make the dataframe and subset out samples you dont want to plot
+test<-d$df_ord
+test$Sample_ID<-rownames(test)
+Herbicides<-data.frame(samp_data$Sampling_time, samp_data$phenotype, samp_data$Genotype, rownames(samp_data))
+names(Herbicides)<-c("Time", "Phenotype", "Genotype", "Sample_ID")
+test<-full_join(test, Herbicides)
+#test$Group=NULL
+names(test)<-c("x", "y","phenotype2","SampleID", "Time", "Phenotype", "Genotype")
+
+#make the ggplot scatter plot
+plot_test<-ggplot(test, aes(x=test$x, y=test$y), color=Phenotype) + scale_color_manual(values=c("#F564E3", "#619CFF", "#F8766D", "#009E73", "#000000")) + geom_point(aes(color=Phenotype, shape = Genotype))
+#add paths, color, and size, of the hulls
+plot_test <- plot_test +
+  geom_path(data= ellipsep1, aes(x=x, y=y), color="#F564E3", linetype="solid", size=1.0) +
+    geom_path(data= ellipsep2, aes(x=x, y=y), color="#619CFF", linetype="solid", size=1.0) +
+    geom_path(data= ellipsep3, aes(x=x, y=y), color="#F8766D", linetype="solid", size=1.0) 
+   
+#theme it on up
+plot_test<- plot_test + theme_classic()
+m<-plot_test 
+#m <-m + annotate("text", x = -0.05, y = -0.012, label = "Time 2")
+#m <-m + annotate("text", x = 0.01, y = -0.01, label = "Time 3")
+#m <-m + annotate("text", x = 0.045, y = -0.023, label = "Time 1")
+m <-m + annotate("text", x = 0.4, y = -0.5, label = "Time: P  = 0.27")
+m<- m + labs(x= "NMDS2", y="NMDS1")
+p <- m + ggtitle("Ordination by Phenotype") + theme(plot.title = element_text(hjust = 0.5, size = 22))  
+p
+```
+
+testing with nesting by developmental stage or by sampling time
+```{r}
+adonis(psdist ~ Sampling_time, data= data.frame((samp_data)), strata = samp_data$Developmental_stage, permutations = 1000)
+adonis(psdist ~ Sampling_time, data= data.frame((samp_data)), permutations = 1000)
+
+adonis(psdist ~ Developmental_stage, data= data.frame((samp_data)), strata = samp_data$Sampling_time, permutations = 1000)
+adonis(psdist ~ Developmental_stage, data= data.frame((samp_data)), permutations = 1000)
+```
+
+
+Flowering Status
+```{r}
+adonis(psdist ~ Sampling_time, data= data.frame((samp_data)), strata = samp_data$Developmental_stage, permutations = 1000)
+adonis(psdist ~  Sampling_time, data= data.frame((samp_data)), permutations = 1000)
+
+#if not significant so no need to do pairwise comparisons. 
+pairwise<-pairwise.adonis2(taxa_table ~ Developmental_stage, data = data.frame(samp_data), perm=1000, p.adjust.methods="bonferroni")
+summary(pairwise)
+pairwise
+
+ord<-ord
+#make the plot with everything 
+d <- gg_ordiplot(ord, samp_data$Developmental_stage, choices = c(1, 2), kind = c("se"), conf = 0.95, show.groups = "all", ellipse = TRUE, label = FALSE, hull = FALSE, spiders = FALSE, plot = TRUE, pt.size = 1) 
+#pull out the ellipses
+df_ellipse <- d$df_ellipse
+ellipses1 <- subset(df_ellipse, Group == "senesce", droplevels= TRUE)
+ellipses2 <- subset(df_ellipse, Group == "flowering", droplevels= TRUE)
+ellipses3 <- subset(df_ellipse, Group == "fruiting", droplevels= TRUE)
+#ellipses4 <- subset(df_ellipse, Group == "preflwr", droplevels= TRUE)
+ellipses5 <- subset(df_ellipse, Group == "vegetative", droplevels= TRUE)
+
+#+scale_colour_manual(values = c("#7FC97F", "#BEAED4", "#FDC086", "#386CB0"))
+
+#make the dataframe and subset out samples you dont want to plot
+test<-d$df_ord
+test$Sample_ID<-rownames(test)
+Herbicides<-data.frame(samp_data$Sampling_time, samp_data$phenotype, samp_data$Genotype, rownames(samp_data))
+names(Herbicides)<-c("Time", "Phenotype", "Genotype", "Sample_ID")
+test<-full_join(test, Herbicides)
+#test$Group=NULL
+names(test)<-c("x", "y","Developmental Stage","SampleID", "Time", "Phenotype", "Genotype")
+test$`Developmental Stage` <- factor(test$`Developmental Stage`, levels = c("vegetative",  "flowering", "fruiting","senesce"))
+#make the ggplot scatter plot
+#plot_test<-ggplot(test, aes(x=test$x, y=test$y), color=Developmental_stage) + scale_color_manual(values=c("#F564E3", "#619CFF", "#FDC086", "#386CB0")) + geom_point(aes(color= Developmental_stage, shape=Time))
+plot_test<-ggplot(test, aes(x=test$x, y=test$y), color=`Developmental Stage`) + scale_color_manual(values=c("#7FC97F", "#BEAED4", "#F8766D","#386CB0" )) + geom_point(aes(color= `Developmental Stage`, shape=Time))
+#add paths, color, and size, of the hulls
+plot_test <- plot_test +
+  geom_path(data= ellipses1, aes(x=x, y=y), color="#7FC97F", linetype="solid", size=1.0) +
+    geom_path(data= ellipses2, aes(x=x, y=y), color="#BEAED4", linetype="solid", size=1.0) +
+    geom_path(data= ellipses3, aes(x=x, y=y), color="#FDC086", linetype="solid", size=1.0) +
+     #geom_path(data= ellipses4, aes(x=x, y=y), color="#009E73", linetype="solid", size=1.0) +
+    geom_path(data= ellipses5, aes(x=x, y=y), color="#386CB0", linetype="solid", size=1.0) 
+   
+#theme it on up
+plot_test<- plot_test + theme_classic()
+m<-plot_test 
+#m <-m + annotate("text", x = -0.05, y = -0.012, label = "Time 2")
+#m <-m + annotate("text", x = 0.01, y = -0.01, label = "Time 3")
+#m <-m + annotate("text", x = 0.045, y = -0.023, label = "Time 1")
+m <-m + annotate("text", x = 0.4, y = -0.5, label = "Developmental Stage: p < 0.01")
+m<- m + labs(x= "NMDS2", y="NMDS1")
+s <- m #+ scale_fill_discrete(name = "New Legend Title")#+ ggtitle("Ordination by Developmental Stage") + theme(plot.title = element_text(hjust = 0.5, size = 22))  
+s
+```
+
+```{r}
+grid.arrange(t, s, p, g)
+```
+#Split by time point and examine flowering status at each time point. 
+```{r}
+time1<- subset_samples(data_rarefied, Sampling_time == "T1")
+time2<- subset_samples(data_rarefied, Sampling_time == "T2")
+time3<- subset_samples(data_rarefied, Sampling_time == "T3")
+time4<- subset_samples(data_rarefied, Sampling_time == "T4")
+
+time1_t<- subset_samples(data_transformed, Sampling_time == "T1")
+time2_t<- subset_samples(data_transformed, Sampling_time == "T2")
+time3_t<- subset_samples(data_transformed, Sampling_time == "T3")
+time4_t<- subset_samples(data_transformed, Sampling_time == "T4")
+```
+
+Diversity (alpha and beta) split by time point and examining impact of flowering status 
+Time 1
+```{r}
+mic.assmblg <- time1
+results <- estimate_richness(time1, measures = c('Shannon', 'Simpson', 'Observed'))
+d <- sample_data(time1)
+
+#sample_data(time1)$status <-  factor(sample_data(time1)$status, levels = c("veg", "preflwr"), ordered = T)
+
+#by time point
+time1_status_alpha <- plot_richness(time1, x = "Developmental_stage", measures=c("Shannon","Simpson", "Observed"), color='Developmental_stage') #, shape="time_point")
+#Pheno <- Pheno + scale_colour_manual(values = c("#CD6821","#CD6821","#CD6821","#CD6821","#158172","#158172","#158172","#158172","#214788","#214788","#214788","#214788")) 
+time1_status_alpha <- time1_status_alpha + geom_boxplot() + theme_bw()
+time1_status_alpha
+
+#At time 1 All samples are in the same developmental stage so no need for testing. 
+#shapiro.test(aov(results$Shannon~d$time_point)$residuals)
+#t1_shannon<-kruskal.test(results$Shannon~ factor(d$Developmental_stage))
+#dunnTest(results$Shannon~ factor(d$Developmental_stage), method = "bon")
+
+#shapiro.test(aov(results$Simpson~d$time_point)$residuals)
+#t1_simpson<-kruskal.test(results$Simpson~ factor(d$status))
+#dunnTest(results$Simpson~ factor(d$status), method = "bon")
+
+#shapiro.test(aov(results$Observed~d$time_point)$residuals)
+#Meets normality assumption but we will use kruskall wallis for congruency
+#t1_observed<-kruskal.test(results$Observed~ factor(d$status))
+#dunnTest(results$Observed~ factor(d$status), method = "bon")
+
+
+
+taxa_table<-otu_table(time1_t)
+samp_data <- sample_data(time1_t)
+psdist<-parDist(as.matrix(taxa_table), method = "bray")
+ord<-metaMDS(taxa_table, distance = "bray", k=3, trymax = 100, previous.best = T)
+stressplot(ord)
+
+#all vegetative at time one
+#adonis(psdist ~  Developmental_stage , data = data.frame((samp_data)))
+
+```
+Time 2
+```{r}
+mic.assmblg <- time2
+results <- estimate_richness(time2, measures = c('Shannon', 'Simpson', 'Observed'))
+d <- sample_data(time2)
+
+sample_data(time2)$Developmental_stage <-  factor(sample_data(time2)$Developmental_stage, levels = c("vegetative", "flowering"), ordered = T)
+
+
+#by time point 2 
+time2_status_alpha <- plot_richness(time2, x = "Developmental_stage", measures=c("Shannon","Simpson", "Observed"), color='Developmental_stage') #, shape="time_point")
+#Pheno <- Pheno + scale_colour_manual(values = c("#CD6821","#CD6821","#CD6821","#CD6821","#158172","#158172","#158172","#158172","#214788","#214788","#214788","#214788")) 
+time2_status_alpha <- time2_status_alpha + geom_boxplot() + theme_bw()
+time2_status_alpha
+
+#shapiro.test(aov(results$Shannon~d$time_point)$residuals)
+t2_shannon<-kruskal.test(results$Shannon~ factor(d$Developmental_stage))
+dunnTest(results$Shannon~ factor(d$Developmental_stage), method = "bon")
+
+#shapiro.test(aov(results$Simpson~d$time_point)$residuals)
+t2_simpson<-kruskal.test(results$Simpson~ factor(d$Developmental_stage))
+dunnTest(results$Simpson~ factor(d$Developmental_stage), method = "bon")
+
+#shapiro.test(aov(results$Observed~d$time_point)$residuals)
+#Meets normality assumption but we will use kruskall wallis for congruency
+t2_observed<-kruskal.test(results$Observed~ factor(d$Developmental_stage))
+dunnTest(results$Observed~ factor(d$Developmental_stage), method = "bon")
+
+
+
+#taxa_table<-otu_table(time2_t)
+#samp_data <- sample_data(time2_t)
+#psdist<-parDist(as.matrix(taxa_table), method = "bray")
+#ord<-metaMDS(taxa_table, distance = "bray", k=3, trymax = 100, previous.best = T)
+#stressplot(ord)
+
+#adonis(psdist ~  status , data = data.frame((samp_data)))
+#if not significant so no need to do pairwise comparisons. 
+#pairwise<-pairwise.adonis2(taxa_table ~ status, data = data.frame(samp_data), perm=1000, p.adjust.methods="bonferroni")
+#summary(pairwise)
+#pairwise
+```
+
+Time 3
+```{r}
+mic.assmblg <- time3
+results <- estimate_richness(time3, measures = c('Shannon', 'Simpson', 'Observed'))
+d <- sample_data(time3)
+
+sample_data(time3)$Developmental_stage <-  factor(sample_data(time3)$Developmental_stage, levels = c("vegetative", "flowering", "fruiting"), ordered = T)
+
+#by time point
+time3_status_alpha <- plot_richness(time3, x = "Developmental_stage", measures=c("Shannon","Simpson", "Observed"), color='Developmental_stage') #, shape="time_point")
+#Pheno <- Pheno + scale_colour_manual(values = c("#CD6821","#CD6821","#CD6821","#CD6821","#158172","#158172","#158172","#158172","#214788","#214788","#214788","#214788")) 
+time3_status_alpha <- time3_status_alpha + geom_boxplot() + theme_bw()
+time3_status_alpha
+
+#shapiro.test(aov(results$Shannon~d$time_point)$residuals)
+t3_shannon<-kruskal.test(results$Shannon~ factor(d$Developmental_stage))
+dunnTest(results$Shannon~ factor(d$Developmental_stage), method = "bon")
+
+#shapiro.test(aov(results$Simpson~d$time_point)$residuals)
+t3_simpson<-kruskal.test(results$Simpson~ factor(d$Developmental_stage))
+dunnTest(results$Simpson~ factor(d$Developmental_stage), method = "bon")
+
+#shapiro.test(aov(results$Observed~d$time_point)$residuals)
+#Meets normality assumption but we will use kruskall wallis for congruency
+t3_observed<-kruskal.test(results$Observed~ factor(d$Developmental_stage))
+dunnTest(results$Observed~ factor(d$Developmental_stage), method = "bon")
+
+
+
+#taxa_table<-otu_table(time3_t)
+#samp_data <- sample_data(time3_t)
+#psdist<-parDist(as.matrix(taxa_table), method = "bray")
+#ord<-metaMDS(taxa_table, distance = "bray", k=3, trymax = 100, previous.best = T)
+#stressplot(ord)
+
+#adonis(psdist ~  status , data = data.frame((samp_data)))
+#if not significant so no need to do pairwise comparisons. 
+#pairwise<-pairwise.adonis2(taxa_table ~ status, data = data.frame(samp_data), perm=1000, p.adjust.methods="bonferroni")
+#summary(pairwise)
+#pairwise
+```
+
+Time 4
+```{r}
+mic.assmblg <- time4
+results <- estimate_richness(time4, measures = c('Shannon', 'Simpson', 'Observed'))
+d <- sample_data(time4)
+
+sample_data(time4)$Developmental_stage <-  factor(sample_data(time4)$Developmental_stage, levels = c("vegetative", "flowering", "fruiting", "senesce"), ordered = T)
+
+
+#by time point
+time4_status_alpha <- plot_richness(time4, x = "Developmental_stage", measures=c("Shannon","Simpson", "Observed"), color='Developmental_stage') #, shape="time_point")
+#Pheno <- Pheno + scale_colour_manual(values = c("#CD6821","#CD6821","#CD6821","#CD6821","#158172","#158172","#158172","#158172","#214788","#214788","#214788","#214788")) 
+time4_status_alpha <- time4_status_alpha + geom_boxplot() + theme_bw()
+time4_status_alpha
+
+#shapiro.test(aov(results$Shannon~d$time_point)$residuals)
+t4_shannon<-kruskal.test(results$Shannon~ factor(d$Developmental_stage))
+dunnTest(results$Shannon~ factor(d$Developmental_stage), method = "bon")
+
+#shapiro.test(aov(results$Simpson~d$time_point)$residuals)
+t4_simpson<-kruskal.test(results$Simpson~ factor(d$Developmental_stage))
+dunnTest(results$Simpson~ factor(d$Developmental_stage), method = "bon")
+
+#shapiro.test(aov(results$Observed~d$time_point)$residuals)
+#Meets normality assumption but we will use kruskall wallis for congruency
+t4_observed<-kruskal.test(results$Observed~ factor(d$Developmental_stage))
+dunnTest(results$Observed~ factor(d$Developmental_stage), method = "bon")
+
+
+
+taxa_table<-otu_table(time4_t)
+samp_data <- sample_data(time4_t)
+psdist<-parDist(as.matrix(taxa_table), method = "bray")
+ord<-metaMDS(taxa_table, distance = "bray", k=3, trymax = 100, previous.best = T)
+stressplot(ord)
+
+adonis(psdist ~  Developmental_stage , data = data.frame((samp_data)), permutations = 1000)
+#if not significant so no need to do pairwise comparisons. 
+pairwise<-pairwise.adonis2(taxa_table ~ Developmental_stage, data = data.frame(samp_data), perm=1000, p.adjust.methods="bonferroni")
+#summary(pairwise)
+#pairwise
+```
+
+##Indicator species analysis
+Generate human readable taxonomic labels.
+```{r}
+# generate a vector containing the full taxonomy path for all OTUs
+wholetax <- do.call(paste, c(as.data.frame(tax_table(data_transformed))
+                  [c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus")], 
+                  sep = "__"))  # to distinguish from "_" within tax ranks
+
+# turn the otu_table into a data.frame
+otu_export <- as.data.frame(otu_table(data_transformed))
+tmp <- names(otu_export)
+tmp2<-seq(1:nrow(data.frame(tmp)))
+
+# paste wholetax and OTU_ids together
+for(i in 1:length(tmp)){
+names(tmp)[i] = paste(wholetax[i], tmp2[i], sep = "__")
+}
+
+# overwrite old names
+names(otu_export) <- names(tmp)
+```
+
+AT=1 means the taxa only occurs in that group and in no others. BT= 1 means all samples in that group have that taxa. 
+
+Indicator species analysis for time point.
+```{#r}
+indval_t <- multipatt(otu_export, samp_data$time_point, control = how(nperm = 1000), func = "indval")
+summary(indval_t, alpha = 0.01, At = 0.5, Bt = 0.5, indvalcomp = T)
+summary(indval_t, alpha = 0.01, At = 0.7, Bt = 0.8 , indvalcomp = T)
+
+#max.order constrains the associations to a single group where as above it can be associated with multiple groups
+indval_1_t <- multipatt(otu_export, samp_data$time_point, control = how(nperm = 1000), max.order = 1, func = "indval")
+summary(indval_1_t, alpha = 0.01, At = 0.5, Bt = 0.8, indvalcomp = T)
+summary(indval_1_t, alpha = 0.01, At = 0.7, Bt = 0.8 , indvalcomp = T)
+
+indval_2_t <- multipatt(otu_export, samp_data$time_point, control = how(nperm = 1000), max.order = 2, func = "indval")
+summary(indval_2_t, alpha = 0.01, At = 0.5, Bt = 0.5, indvalcomp = T)
+summary(indval_2_t, alpha = 0.01, At = 0.7, Bt = 0.8 , indvalcomp = T)
+```
+
+Indicator species analysis for genotype. 
+```{#r}
+indval_g <- multipatt(otu_export, samp_data$genotype, control = how(nperm = 1000), func = "indval")
+summary(indval_g, alpha = 0.01, At = 0.5, Bt = 0.5, indvalcomp = T)
+summary(indval_g, alpha = 0.01, At = 0.7, Bt = 0.8 , indvalcomp = T)
+
+#max.order constrains the associations to a single group where as above it can be associated with multiple groups
+indval_1_g <- multipatt(otu_export, samp_data$genotype, control = how(nperm = 1000), max.order = 1, func = "indval")
+summary(indval_1_g, alpha = 0.01, At = 0.5, Bt = 0.8, indvalcomp = T)
+summary(indval_1_g, alpha = 0.01, At = 0.7, Bt = 0.8 , indvalcomp = T)
+
+indval_2_g <- multipatt(otu_export, samp_data$genotype, control = how(nperm = 1000), max.order = 2, func = "indval")
+summary(indval_2_g, alpha = 0.01, At = 0.5, Bt = 0.5, indvalcomp = T)
+summary(indval_2_g, alpha = 0.01, At = 0.7, Bt = 0.8 , indvalcomp = T)
+```
+
+Indicator analysis for flowering status
+```{#r}
+indval_s <- multipatt(otu_export, samp_data$status, control = how(nperm = 1000), func = "indval")
+summary(indval_s, alpha = 0.01, At = 0.5, Bt = 0.5, indvalcomp = T)
+summary(indval_s, alpha = 0.01, At = 0.7, Bt = 0.8 , indvalcomp = T)
+
+#max.order constrains the associations to a single group where as above it can be associated with multiple groups
+indval_1_s <- multipatt(otu_export, samp_data$status, control = how(nperm = 1000), max.order = 1, func = "indval")
+summary(indval_1_s, alpha = 0.01, At = 0.5, Bt = 0.8, indvalcomp = T)
+summary(indval_1_s, alpha = 0.01, At = 0.7, Bt = 0.8 , indvalcomp = T)
+
+indval_2_s <- multipatt(otu_export, samp_data$status, control = how(nperm = 1000), max.order = 2, func = "indval")
+summary(indval_2_s, alpha = 0.01, At = 0.5, Bt = 0.5, indvalcomp = T)
+summary(indval_2_s, alpha = 0.01, At = 0.7, Bt = 0.8 , indvalcomp = T)
+```
+
+Time point indicator species analysis with Deseq2 at the ESV level. This is not going to be used but will be inlcuded here for now. 
+```{#r}
+diagdds <- phyloseq_to_deseq2(data_rarefied, ~ time_point)
+diagdds <- DESeq(diagdds, test="Wald", fitType="parametric")
+
+#res <- DESeq2::results(diagdds,  contrast = c("time_point", "T1", "T2"))
+#res <- DESeq2::results(diagdds,  contrast = c("time_point", "T1", "T3"))
+#res <- DESeq2::results(diagdds,  contrast = c("time_point", "T1", "T4"))
+#res <- DESeq2::results(diagdds,  contrast = c("time_point", "T2", "T3"))
+#res <- DESeq2::results(diagdds,  contrast = c("time_point", "T2", "T4"))
+#res <- DESeq2::results(diagdds,  contrast = c("time_point", "T3", "T4"))
+
+
+  
+alpha = 0.01
+sigtab <- res[which(res$padj < alpha), ]
+sigtab <- cbind(as(sigtab, "data.frame"), as(tax_table(data_rarefied)[rownames(sigtab), ], "matrix"))
+head(sigtab)
+
+#sigtabT12<-sigtab
+#write.csv(sigtabT12, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/sigtab12.csv")
+#sigtabT1T3<-sigtab
+#write.csv(sigtabT1T3, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/sigtab13.csv")
+#sigtabT14<-sigtab
+#write.csv(sigtabT14, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/sigtab14.csv")
+
+#sigtabT23<-sigtab
+#write.csv(sigtabT23, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/sigtab23.csv")
+#sigtabT24<-sigtab
+#write.csv(sigtabT24, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/sigtab24.csv")
+
+#sigtabT34<-sigtab
+#write.csv(sigtabT34, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/sigtab34.csv")
+```
+Too many taxa to make a clear graph. Not using currenlty but may at a later date. 
+```{#r}
+sigtab<-sigtabT1T3
+# Phylum order
+x = tapply(sigtab$log2FoldChange, sigtab$Phylum, function(x) max(x))
+x = sort(x, TRUE)
+sigtab$Phylum = factor(as.character(sigtab$Phylum), levels=names(x))
+# Genus order
+x = tapply(sigtab$log2FoldChange, sigtab$Genus, function(x) max(x))
+x = sort(x, TRUE)
+sigtab$Genus = factor(as.character(sigtab$Genus), levels=names(x))
+ggplot(sigtab, aes(x=Genus, y=log2FoldChange, color=Phylum)) + geom_point(size=6) + 
+  theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))
+```
+
+Indicator analysis at the genus level for time point. 
+```{r}
+data_rarefied_genus <- tax_glom(data_rarefied, "Genus")
+
+diagdds <- phyloseq_to_deseq2(data_rarefied_genus, ~ Sampling_time)
+diagdds <- DESeq(diagdds, test="Wald", fitType="parametric")
+
+res1 <- DESeq2::results(diagdds,  contrast = c("Sampling_time", "T1", "T2"))
+res2 <- DESeq2::results(diagdds,  contrast = c("Sampling_time", "T1", "T3"))
+res3 <- DESeq2::results(diagdds,  contrast = c("Sampling_time", "T1", "T4"))
+res4 <- DESeq2::results(diagdds,  contrast = c("Sampling_time", "T2", "T3"))
+res5 <- DESeq2::results(diagdds,  contrast = c("Sampling_time", "T2", "T4"))
+res6 <- DESeq2::results(diagdds,  contrast = c("Sampling_time", "T3", "T4"))
+
+
+res<-res6
+alpha = 0.01
+sigtab <- res[which(res$padj < alpha), ]
+sigtab <- cbind(as(sigtab, "data.frame"), as(tax_table(data_rarefied)[rownames(sigtab), ], "matrix"))
+head(sigtab)
+
+#sigtabT12<-sigtab
+#write.csv(sigtabT12, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/sigtab12_f.csv")
+#sigtabT1T3<-sigtab
+#write.csv(sigtabT1T3, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/sigtab13_f.csv")
+#sigtabT14<-sigtab
+#write.csv(sigtabT14, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/sigtab14_f.csv")
+
+#sigtabT23<-sigtab
+#write.csv(sigtabT23, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/sigtab23_f.csv")
+#sigtabT24<-sigtab
+#write.csv(sigtabT24, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/sigtab24_f.csv")
+
+#sigtabT34<-sigtab
+#write.csv(sigtabT34, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/sigtab34_f.csv")
+```
+
+We need a long vector of colors to plot genus and family level bar plots. 
+```{r}
+#create super long color vector
+col_vector <- c("#000000", "#FFFF00", "#1CE6FF", "#FF34FF", "#FF4A46", "#008941", "#006FA6", "#A30059",
+        "#FFDBE5", "#7A4900", "#0000A6", "#63FFAC", "#B79762", "#004D43", "#8FB0FF", "#997D87",
+        "#5A0007", "#809693", "#FEFFE6", "#1B4400", "#4FC601", "#3B5DFF", "#4A3B53", "#FF2F80",
+        "#61615A", "#BA0900", "#6B7900", "#00C2A0", "#FFAA92", "#FF90C9", "#B903AA", "#D16100",
+        "#DDEFFF", "#000035", "#7B4F4B", "#A1C299", "#300018", "#0AA6D8", "#013349", "#00846F",
+        "#372101", "#FFB500", "#C2FFED", "#A079BF", "#CC0744", "#C0B9B2", "#C2FF99", "#001E09",
+        "#00489C", "#6F0062", "#0CBD66", "#EEC3FF", "#456D75", "#B77B68", "#7A87A1", "#788D66",
+        "#885578", "#FAD09F", "#FF8A9A", "#D157A0", "#BEC459", "#456648", "#0086ED", "#886F4C",
+        
+        "#34362D", "#B4A8BD", "#00A6AA", "#452C2C", "#636375", "#A3C8C9", "#FF913F", "#938A81",
+        "#575329", "#00FECF", "#B05B6F", "#8CD0FF", "#3B9700", "#04F757", "#C8A1A1", "#1E6E00",
+        "#7900D7", "#A77500", "#6367A9", "#A05837", "#6B002C", "#772600", "#D790FF", "#9B9700",
+        "#549E79", "#FFF69F", "#201625", "#72418F", "#BC23FF", "#99ADC0", "#3A2465", "#922329",
+        "#5B4534", "#FDE8DC", "#404E55", "#0089A3", "#CB7E98", "#A4E804", "#324E72", "#6A3A4C",
+        "#83AB58", "#001C1E", "#D1F7CE", "#004B28", "#C8D0F6", "#A3A489", "#806C66", "#222800",
+        "#BF5650", "#E83000", "#66796D", "#DA007C", "#FF1A59", "#8ADBB4", "#1E0200", "#5B4E51",
+        "#C895C5", "#320033", "#FF6832", "#66E1D3", "#CFCDAC", "#D0AC94", "#7ED379", "#012C58",
+        
+        "#7A7BFF", "#D68E01", "#353339", "#78AFA1", "#FEB2C6", "#75797C", "#837393", "#943A4D",
+        "#B5F4FF", "#D2DCD5", "#9556BD", "#6A714A", "#001325", "#02525F", "#0AA3F7", "#E98176",
+        "#DBD5DD", "#5EBCD1", "#3D4F44", "#7E6405", "#02684E", "#962B75", "#8D8546", "#9695C5",
+        "#E773CE", "#D86A78", "#3E89BE", "#CA834E", "#518A87", "#5B113C", "#55813B", "#E704C4",
+        "#00005F", "#A97399", "#4B8160", "#59738A", "#FF5DA7", "#F7C9BF", "#643127", "#513A01",
+        "#6B94AA", "#51A058", "#A45B02", "#1D1702", "#E20027", "#E7AB63", "#4C6001", "#9C6966",
+        "#64547B", "#97979E", "#006A66", "#391406", "#F4D749", "#0045D2", "#006C31", "#DDB6D0",
+        "#7C6571", "#9FB2A4", "#00D891", "#15A08A", "#BC65E9", "#FFFFFE", "#C6DC99", "#203B3C",
+
+        "#671190", "#6B3A64", "#F5E1FF", "#FFA0F2", "#CCAA35", "#374527", "#8BB400", "#797868",
+        "#C6005A", "#3B000A", "#C86240", "#29607C", "#402334", "#7D5A44", "#CCB87C", "#B88183",
+        "#AA5199", "#B5D6C3", "#A38469", "#9F94F0", "#A74571", "#B894A6", "#71BB8C", "#00B433",
+        "#789EC9", "#6D80BA", "#953F00", "#5EFF03", "#E4FFFC", "#1BE177", "#BCB1E5", "#76912F",
+        "#003109", "#0060CD", "#D20096", "#895563", "#29201D", "#5B3213", "#A76F42", "#89412E",
+        "#1A3A2A", "#494B5A", "#A88C85", "#F4ABAA", "#A3F3AB", "#00C6C8", "#EA8B66", "#958A9F",
+        "#BDC9D2", "#9FA064", "#BE4700", "#658188", "#83A485", "#453C23", "#47675D", "#3A3F00",
+        "#061203", "#DFFB71", "#868E7E", "#98D058", "#6C8F7D", "#D7BFC2", "#3C3E6E", "#D83D66",
+
+        "#2F5D9B", "#6C5E46", "#D25B88", "#5B656C", "#00B57F", "#545C46", "#866097", "#365D25",
+        "#252F99", "#00CCFF", "#674E60", "#FC009C", "#92896B")
+```
+
+Abundance bar plots for time point only including indicator taxa. Taxa graphed here must be an indicator in atleast one comparison. 
+```{r}
+data_indic<-subset_taxa(physeq = data_rarefied_genus, colnames(data_rarefied_genus@otu_table) %in% c(rownames(sigtabT12), rownames(sigtabT1T3), rownames(sigtabT14), rownames(sigtabT23), rownames(sigtabT24), rownames(sigtabT34)))
+
+data_indic_table<-data.frame(otu_table(data_indic))
+data_indic_samp_data<-data.frame(sample_data(data_indic))
+
+#check to make sure a postive number in logchange indicates the second category is higher.
+#boxplot(data_indic_table$ACAGAGGGTGCAAGCGTTAATCGGATTTACTGGGCGTAAAGCGTGTGTAGGTGGTTGGGAAAGTCAATTGTGAAATCCCCGGGCTTAACTCGGGAACTGCTTTTGATACTGTCTGACTAGAATTCGGTAGAGGGAGGCGGAACTCCAGGTGTAGCGGTGAAATGCGTAGATATCTGGAAGAACACCAATGGCGAAGGCAACCTCCTGGGCCTGAATTGACACTGAGACACGAAAGCGTGGGGATCAAACAGGATTAGATACCCTGGTAGTCCACGCCGTAAACGATGACAACTTGACGTCGGTTTGCTCTGCGAATCGGTGTCGTAGCTAACGCGATAAGTTGTCCGCCTGGGGAGTACGGCCGCAAGGTTGAA ~ data_indic_samp_data$time_point )
+
+
+ps <- tax_glom(data_indic, "Family")
+#ps<-data_indic
+ps0 <- transform_sample_counts(ps, function(x) x / sum(x))
+ps1 <- merge_samples(ps0, "Sampling_time")
+ps2 <- transform_sample_counts(ps1, function(x) x / sum(x))
+#col_vector<-c(col_vector , col_vector, col_vector, col_vector)
+#all_indic_bar_plot<-plot_bar(ps2, fill="Genus") + scale_fill_manual(values = col_vector)
+#all_indic_bar_plot_family<-plot_bar(ps2, fill="Family") + scale_fill_manual(values = col_vector)
+all_indic_bar_plot_family<-plot_bar(ps2, fill="Family") + scale_fill_manual(values = col_vector)
+
+
+ps <- tax_glom(data_indic, "Family")
+ps0  <- transform_sample_counts(ps, function(x) x / sum(x) )
+ps0_5 <- filter_taxa(ps0, function(x) sum(x) > 0.5, TRUE)
+ps1 <- merge_samples(ps0_5, "Sampling_time")
+ps2 <- transform_sample_counts(ps1, function(x) x / sum(x))
+#col_vector<-c(col_vector , col_vector, col_vector, col_vector)
+#common_indic_bar_plot<-plot_bar(ps2, fill="Genus") + scale_fill_manual(values = col_vector)
+#common_indic_bar_plot_family<-plot_bar(ps2, fill="Family") + scale_fill_manual(values = col_vector) + ggtitle("Common Indicator at Family Level") + theme(plot.title = element_text(hjust = 0.5, size = 22))  
+common_indic_bar_plot_family<-plot_bar(ps2, fill="Family") + scale_fill_manual(values = col_vector) 
+common_indic_bar_plot_family <- common_indic_bar_plot_family + theme_bw() +  theme(axis.text.x = element_text(color="black", size=10, angle=45, hjust=1),
+          axis.text.y = element_text(color="black", size=10, angle=45)) + scale_x_discrete(name ="Sampling Time") + ylab("Relative Abundance") + theme(axis.text=element_text(size=12)) 
+
+common_indic_bar_plot_family
+```
+
+Unique indicator taxa by time point. This also contains all indicators but i figure only those unique to a given time would be of interest. I widdle this list down to taxa that are only indicators of a single time point. 
+```{r}
+data_indic<-subset_taxa(physeq = data_rarefied_genus, colnames(data_rarefied_genus@otu_table) %in% c(rownames(sigtabT12), rownames(sigtabT1T3), rownames(sigtabT14), rownames(sigtabT23), rownames(sigtabT24), rownames(sigtabT34)))
+
+data_indic_table<-data.frame(otu_table(data_indic))
+data_indic_samp_data<-data.frame(sample_data(data_indic))
+
+#check to make sure a postive number in logchange indicates the second category is higher.
+boxplot(data_indic_table$ACGAACCGAGCGAACGTTGTTCGGAATCACTGGGCTTAAAGGGCGCGTAGGCGGGCGGCTAAGTCTGTGGTGAAATCCTCCAGCTCAACTGGAGAACTGCCATGGATACTGGTTGTCTCGAGGAAGGTAGGGGTATGCGGAACTATCGGTGGAGCGGTGAAATGCGTTGATATCGATAGGAACTCCGGTGGCGAAGGCGGCATACTGGACCTTTTCTGACGCTGAGGCGCGAAAGCCAGGGGAGCAAACGGGATTAGATACCCCGGTAGTCCTGGCCCTAAACGATGGGTACTAGCTAGTAGGGTTCACATGGCTTTACTGGCGAAGCAAAAGTGCTAAGTACCCCGCCTGGGGAGTATGGTCGCAAGGCTGAA ~ data_indic_samp_data$time_point)
+
+
+#tableing the indicator taxa time
+#time 1 indicators 
+t1_2_sig<-sigtabT12[sigtabT12$log2FoldChange >= 0,]
+a<-rownames(t1_2_sig)
+
+t1_3_sig<-sigtabT1T3[sigtabT1T3$log2FoldChange >= 0,]
+b<-rownames(t1_3_sig)
+
+t1_4_sig<-sigtabT14[sigtabT14$log2FoldChange >= 0,]
+c<-rownames(t1_4_sig)
+d<-c(a,b,c)
+e<-unique(d)
+
+Time1_indicators<- subset_taxa(physeq = data_indic, colnames(data_indic@otu_table) %in% e)
+#ps1 <- merge_samples(Time1_indicators, "time_point")
+#ps2 <- transform_sample_counts(ps1, function(x) x / sum(x))
+#plot_bar(ps2, fill = "Family") + scale_fill_manual(values = col_vector)
+
+library(metagMisc)
+Time1_test<-phyloseq_to_df(Time1_indicators, addtax = T)
+sort(table(Time1_test$Phylum))
+
+#time 2 indicators 
+t2_1_sig<-sigtabT12[sigtabT12$log2FoldChange <= 0,]
+a<-rownames(t2_1_sig)
+t2_3_sig<-sigtabT23[sigtabT23$log2FoldChange >= 0,]
+b<-rownames(t2_3_sig)
+t2_4_sig<-sigtabT24[sigtabT24$log2FoldChange >= 0,]
+c<-rownames(t2_4_sig)
+d<-c(a,b,c)
+e<-unique(d)
+Time2_indicators<- subset_taxa(physeq = data_indic, colnames(data_indic@otu_table) %in% e)
+Time2_test<-phyloseq_to_df(Time2_indicators, addtax = T)
+sort(table(Time2_test$Phylum))
+
+#time 3 indicators
+t3_1_sig<-sigtabT1T3[sigtabT1T3$log2FoldChange <= 0,]
+a<-rownames(t3_1_sig)
+t3_2_sig<-sigtabT23[sigtabT23$log2FoldChange <= 0,]
+b<-rownames(t3_2_sig)
+t3_4_sig<- sigtabT34[sigtabT34$log2FoldChange >= 0,]
+c<-rownames(t3_4_sig)
+d<-c(a,b,c)
+e<-unique(d)
+Time3_indicators<- subset_taxa(physeq = data_indic, colnames(data_indic@otu_table) %in% e)
+Time3_test<-phyloseq_to_df(Time3_indicators, addtax = T)
+sort(table(Time3_test$Phylum))
+
+#time 4 indicators
+t4_1_sig<-sigtabT14[sigtabT14$log2FoldChange <= 0,]
+a<-rownames(t4_1_sig)
+t4_2_sig<-sigtabT24[sigtabT24$log2FoldChange <= 0,]
+b<-rownames(t4_2_sig)
+t4_3_sig<- sigtabT34[sigtabT34$log2FoldChange <= 0,]
+c<-rownames(t4_3_sig)
+d<-c(a,b,c)
+e<-unique(d)
+Time4_indicators<- subset_taxa(physeq = data_indic, colnames(data_indic@otu_table) %in% e)
+Time4_test<-phyloseq_to_df(Time4_indicators, addtax = T)
+sort(table(Time4_test$Phylum))
+str(Time4_test)
+
+#False is not found in any other indicator set
+table(Time1_test$OTU %in% c(Time2_test$OTU,Time3_test$OTU, Time4_test$OTU))
+which(!Time1_test$OTU %in% c(Time2_test$OTU,Time3_test$OTU, Time4_test$OTU))
+unique_to_T1<-Time1_test[which(!Time1_test$OTU %in% c(Time2_test$OTU,Time3_test$OTU, Time4_test$OTU)),]
+table(unique_to_T1$Phylum)
+table(unique_to_T1$Class)
+table(unique_to_T1$Order)
+table(unique_to_T1$Family)
+
+table(Time2_test$OTU %in% c(Time1_test$OTU,Time3_test$OTU, Time4_test$OTU))
+which(!Time2_test$OTU %in% c(Time1_test$OTU,Time3_test$OTU, Time4_test$OTU))
+unique_to_T2<-Time2_test[which(!Time2_test$OTU %in% c(Time1_test$OTU,Time3_test$OTU, Time4_test$OTU)),]
+table(unique_to_T2$Phylum)
+table(unique_to_T2$Class)
+table(unique_to_T2$Order)
+table(unique_to_T2$Family)
+
+table(Time3_test$OTU %in% c(Time1_test$OTU,Time2_test$OTU, Time4_test$OTU))
+which(!Time3_test$OTU %in% c(Time1_test$OTU,Time2_test$OTU, Time4_test$OTU))
+unique_to_T3 <- Time3_test[which(!Time3_test$OTU %in% c(Time1_test$OTU,Time2_test$OTU, Time4_test$OTU)),]
+table(unique_to_T3$Phylum)
+table(unique_to_T3$Class)
+table(unique_to_T3$Order)
+table(unique_to_T3$Family)
+
+table(Time4_test$OTU %in% c(Time1_test$OTU,Time2_test$OTU, Time3_test$OTU))
+which(!Time4_test$OTU %in% c(Time1_test$OTU,Time2_test$OTU, Time3_test$OTU))
+unique_to_T4 <- Time4_test[which(!Time4_test$OTU %in% c(Time1_test$OTU,Time2_test$OTU, Time3_test$OTU)),]
+table(unique_to_T4$Phylum)
+table(unique_to_T4$Class)
+table(unique_to_T4$Order)
+table(unique_to_T4$Family)
+
+
+unique_to_single_time<-rbind(unique_to_T1, unique_to_T2, unique_to_T3, unique_to_T4)#
+#write.csv(unique_to_single_time, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/unique_to_single_time.csv")
+
+```
+
+Not using currently but will keep for later date if needed 
+```{#r}
+#make box n whisker plot of phylum for summarized time point data
+silk_workingr <- transform_sample_counts(time_merged, function(x) x/sum(x))
+# agglomerate taxa
+glom <- tax_glom(silk_workingr, taxrank = 'Phylum')
+#create dataframe
+dat <- psmelt(glom)
+#make phylum a character
+dat$Phylum <- as.character(dat$Phylum)
+library(plyr)
+medians <- ddply(dat, ~Phylum, function(x) c(median=median(x$Abundance)))
+remainder <- medians[medians$median <= 0.0001,]$Phylum
+dat[dat$Phylum %in% remainder,]$Phylum <- 'Remainder'
+ggplot(dat,
+       aes(x=Phylum,
+           y=Abundance)) + geom_boxplot() + coord_flip()
+```
+
+Abundance bar plots by time -- includes all taxa
+```{r}
+
+#all taxa reduced to phylum
+ps <- tax_glom(data.bac, "Family")
+ps0 <- transform_sample_counts(ps, function(x) x / sum(x))
+ps1 <- merge_samples(ps0, "Sampling_time")
+ps2 <- transform_sample_counts(ps1, function(x) x / sum(x))
+time_Class<-plot_bar(ps2, fill="Class") + scale_fill_manual(values = col_vector)
+time_Order<-plot_bar(ps2, fill="Order") + scale_fill_manual(values = col_vector)
+time_Phylum<-plot_bar(ps2, fill="Phylum") + scale_fill_manual(values = col_vector)
+time_Family<-plot_bar(ps2, fill="Family") + scale_fill_manual(values = col_vector)
+```
+
+Indicator analysis for genotype 
+```{r}
+data_rarefied_genus <- tax_glom(data_rarefied, "Genus")
+
+diagdds <- phyloseq_to_deseq2(data_rarefied_genus, ~ genotype)
+diagdds <- DESeq(diagdds, test="Wald", fitType="parametric")
+
+#no indicator taxa at the family level.
+
+res1 <- DESeq2::results(diagdds,  contrast = c("genotype", "SALK_072930C", "CS3797")) # none
+res2 <- DESeq2::results(diagdds,  contrast = c("genotype", "SALK_072930C", "CS6230")) # 1
+res3 <- DESeq2::results(diagdds,  contrast = c("genotype", "SALK_072930C", "CS9869")) # 2
+res4 <- DESeq2::results(diagdds,  contrast = c("genotype", "SALK_072930C", "CS6673")) # none
+
+res5 <- DESeq2::results(diagdds,  contrast = c("genotype", "CS3797", "CS6230")) # 1
+res6 <- DESeq2::results(diagdds,  contrast = c("genotype", "CS3797", "CS9869")) #2
+res7 <- DESeq2::results(diagdds,  contrast = c("genotype", "CS3797", "CS6673")) # none
+
+res8 <- DESeq2::results(diagdds,  contrast = c("genotype", "CS6230", "CS9869")) # none
+res9 <- DESeq2::results(diagdds,  contrast = c("genotype", "CS6230", "CS6673")) # none
+
+res10 <- DESeq2::results(diagdds,  contrast = c("genotype", "CS9869", "CS6673")) # none
+  
+res<-res6
+alpha = 0.01
+sigtab <- res[which(res$padj < alpha), ]
+sigtab <- cbind(as(sigtab, "data.frame"), as(tax_table(data_rarefied)[rownames(sigtab), ], "matrix"))
+head(sigtab)
+
+#hashed out so i cant over write accidentaly. Each output table gets its own sigtab for later. 
+#sigtab1<- sigtab 
+#write.csv(sigtab1, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/SALK072930C_CS6230.csv")
+#sigtab2<- sigtab #
+#write.csv(sigtab2, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/SALK072930C_CS9869.csv")
+#sigtab3<- sigtab #
+#write.csv(sigtab3, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/CS3797_CS6230.csv")
+#sigtab4<- sigtab #
+#write.csv(sigtab4, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/CS3797_CS9869.csv")
+#sigtab5<- sigtab
+#sigtab6<- sigtab
+#sigtab7<- sigtab
+#sigtab8<- sigtab
+#sigtab9<- sigtab
+#sigtab10<- sigtab
+
+#will write out if something is interesting
+#sigtab12<-sigtab
+#write.csv(sigtabT12, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/sigtab")
+#sigtabT1T3<-sigtab
+#write.csv(sigtabT1T3, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/sigtab13_g.csv")
+#sigtabT14<-sigtab
+#write.csv(sigtabT14, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/sigtab14_g.csv")
+
+#sigtabT23<-sigtab
+#write.csv(sigtabT23, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/sigtab23_g.csv")
+#sigtabT24<-sigtab
+#write.csv(sigtabT24, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/sigtab24_g.csv")
+
+#sigtabT34<-sigtab
+#write.csv(sigtabT34, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/sigtab34_g.csv")
+```
+
+Abundance bar plots by genotype -- includes all taxa
+```{r}
+ps <- tax_glom(data.bac, "Family")
+ps0 <- transform_sample_counts(ps, function(x) x / sum(x))
+ps1 <- merge_samples(ps0, "Genotype")
+ps2 <- transform_sample_counts(ps1, function(x) x / sum(x))
+geno_class <-plot_bar(ps2, fill="Class") + scale_fill_manual(values = col_vector)
+geno_order <-plot_bar(ps2, fill="Order") + scale_fill_manual(values = col_vector)
+geno_phylum <-plot_bar(ps2, fill="Phylum") + scale_fill_manual(values = col_vector)
+geno_family <-plot_bar(ps2, fill="Family") + scale_fill_manual(values = col_vector)
+```
+
+With only a few indicator taxa for genotype i didnt bother making the bar plots for them. 
+
+Indicator analysis for flowering status
+```{r}
+data_rarefied_genus <- tax_glom(data_rarefied, "Genus")
+
+diagdds <- phyloseq_to_deseq2(data_rarefied_genus, ~ Developmental_stage)
+diagdds <- DESeq(diagdds, test="Wald", fitType="parametric")
+
+res1 <- DESeq2::results(diagdds,  contrast = c("Developmental_stage", "senesce", "flowering")) # 1
+res2 <- DESeq2::results(diagdds,  contrast = c("Developmental_stage", "senesce", "fruiting")) # 2
+res3 <- DESeq2::results(diagdds,  contrast = c("Developmental_stage", "senesce", "vegetative")) # 3
+
+res4 <- DESeq2::results(diagdds,  contrast = c("Developmental_stage", "flowering", "fruiting")) # 4
+
+res5 <- DESeq2::results(diagdds,  contrast = c("Developmental_stage", "flowering", "vegetative")) # 5
+
+res6 <- DESeq2::results(diagdds,  contrast = c("Developmental_stage", "fruiting", "vegetative")) # 6
+
+res<-res4
+  
+alpha = 0.01
+sigtab <- res[which(res$padj < alpha), ]
+sigtab <- cbind(as(sigtab, "data.frame"), as(tax_table(data_rarefied)[rownames(sigtab), ], "matrix"))
+View(sigtab)
+
+#hashed out so i cant over write accidentaly. Each output table gets its own sigtab for later. 
+#sigtab1<- sigtab #
+#write.csv(sigtab1, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/done_flower.csv")
+#sigtab2<- sigtab #
+#write.csv(sigtab2, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/done_fruit.csv")
+#sigtab3<- sigtab #
+#write.csv(sigtab3, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/done_veg.csv")
+
+
+#sigtab4<- sigtab
+#write.csv(sigtab4, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis//flwr_fruit.csv")
+
+#sigtab5<- sigtab
+#write.csv(sigtab5, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/flwr_veg.csv")
+
+#sigtab6<- sigtab
+#write.csv(sigtab6, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/fruit_veg.csv")
+
+```
+
+Abundance bar plots for flowering status only including indicator taxa
+```{r}
+data_indic<-subset_taxa(physeq = data_rarefied_genus, colnames(data_rarefied_genus@otu_table) %in% c(rownames(sigtab1), rownames(sigtab2), rownames(sigtab3), rownames(sigtab4), rownames(sigtab5), rownames(sigtab6)))
+
+sample_data(data_indic)$Developmental_stage <-  factor(sample_data(data_indic)$Developmental_stage, levels = c("vegetative" , "flowering", "fruiting", "senesce"), ordered = T)
+
+ps <- tax_glom(data_indic, "Genus")
+#ps<-data_indic
+ps0 <- transform_sample_counts(ps, function(x) x / sum(x))
+ps1 <- merge_samples(ps0, "Developmental_stage")
+ps1@sam_data$status<-factor(rownames(sample_data(ps1)), levels = c("vegetative" , "flowering", "fruiting", "senesce"), ordered = T)
+
+ps2 <- transform_sample_counts(ps1, function(x) x / sum(x))
+#col_vector<-c(col_vector , col_vector, col_vector, col_vector)
+#all_indic_bar_plot<-plot_bar(ps2, fill="Genus") + scale_fill_manual(values = col_vector)
+sample_data(ps2)$status <-  factor(sample_data(ps2)$status, levels = c("vegetative" , "flowering", "fruiting", "senesce"), ordered = T)
+
+all_indic_bar_plot_family<-plot_bar(ps2, fill="Family") + scale_fill_manual(values = col_vector)
+all_indic_bar_plot_family$data$Sample <- factor(all_indic_bar_plot_family$data$Sample, levels = c("vegetative" , "flowering", "fruiting", "senesce"), ordered = T)
+print(all_indic_bar_plot_family)
+all_indic_bar_plot_phylum<-plot_bar(ps2, fill="Phylum") + scale_fill_manual(values = col_vector)
+all_indic_bar_plot_phylum$data$Sample <- factor(all_indic_bar_plot_family$data$Sample, levels = c("vegetative" , "flowering", "fruiting", "senesce"), ordered = T)
+print(all_indic_bar_plot_phylum)
+
+ps <- tax_glom(data_indic, "Family")
+ps0  <- transform_sample_counts(ps, function(x) x / sum(x) )
+ps0_5 <- filter_taxa(ps0, function(x) sum(x) > 0.5, TRUE)
+ps1 <- merge_samples(ps0_5, "Developmental_stage")
+ps2 <- transform_sample_counts(ps1, function(x) x / sum(x))
+#col_vector<-c(col_vector , col_vector, col_vector, col_vector)
+#common_indic_bar_plot<-plot_bar(ps2, fill="Genus") + scale_fill_manual(values = col_vector)
+common_indic_bar_plot_family<-plot_bar(ps2, fill="Family") + scale_fill_manual(values = col_vector) #+ ggtitle("Common Indicator at Family Level") + theme(plot.title = element_text(hjust = 0.5, size = 22))  
+common_indic_bar_plot_family$data$Sample <- factor(common_indic_bar_plot_family$data$Sample, levels = c("vegetative" , "flowering", "fruiting", "senesce"))
+#print(common_indic_bar_plot_family)
+#common_indic_bar_plot_family<-plot_bar(ps2, fill="Family") + scale_fill_manual(values = col_vector) 
+#Pheno <- Pheno + scale_colour_manual(values = c("#CD6821","#CD6821","#CD6821","#CD6821","#158172","#158172","#158172","#158172","#214788","#214788","#214788","#214788")) 
+common_indic_bar_plot_family <- common_indic_bar_plot_family + theme_bw() +  theme(axis.text.x = element_text(color="black", size=10, angle=45, hjust=1),
+          axis.text.y = element_text(color="black", size=10, angle=45)) + scale_x_discrete(name ="Developmental Stage") + ylab("Relative Abundance") + theme(axis.text=element_text(size=12)) 
+common_indic_bar_plot_family
+```
+
+Taxa unique to a single flowering stage.
+```{r}
+data_indic<-subset_taxa(physeq = data_rarefied_genus, colnames(data_rarefied_genus@otu_table) %in% c(rownames(sigtab1), rownames(sigtab2), rownames(sigtab3), rownames(sigtab4), rownames(sigtab5), rownames(sigtab6)))
+
+
+data_indic_table<-data.frame(otu_table(data_indic))
+data_indic_samp_data<-data.frame(sample_data(data_indic))
+
+#check to make sure a postive number in logchange indicates the first()? category is higher.
+boxplot(data_indic_table$ACGGAGGGTGCAAGCGTTATCCGGATTTATTGGGTTTAAAGGGTCCGTAGGCGGACCTGTAAGTCAGTGGTGAAATCTCATAGCTTAACTATGAAACTGCCATTGATACTGCAGGTCTTGAGTAAATTTGAAGTGGCTGGAATAAGTAGTGTAGCGGTGAAATGCATAGATATTACTTAGAACACCAATTGCGAAGGCAGGTCACTAAGATTTAACTGACGCTGAGGGACGAAAGCGTGGGGAGCGAACAGGATTAGATACCCTGGTAGTCCACGCCGTAAACGATGCTAACTCGTTTTTGGATTTTCGGATTCAGAGACCAAGCGAAAGTGATAAGTTAGCCACCTGGGGAGTACGTCCGCAAGGATGAA ~ data_indic_samp_data$status)
+
+#Flower status indicators 
+
+#tableing the indicator taxa time
+#done status indicators 
+done_flwr <- sigtab1[sigtab1$log2FoldChange >= 0,]
+done_flwr$Indicator<-paste("done_flwr")
+a<-rownames(done_flwr)
+
+done_fruit<-sigtab2[sigtab2$log2FoldChange >= 0,]
+b<-rownames(done_fruit)
+
+done_veg<-sigtab3[sigtab3$log2FoldChange >= 0,]
+c<-rownames(done_veg)
+
+e<-c(a,b,c)
+f<-unique(e)
+
+done_indicators<- subset_taxa(physeq = data_indic, colnames(data_indic@otu_table) %in% f)
+library(metagMisc)
+done_test<-phyloseq_to_df(done_indicators, addtax = T)
+sort(table(done_test$Phylum))
+
+#Flower indicators:
+
+flwr_done<-sigtab1[sigtab1$log2FoldChange <= 0,]
+flwr_done$Indicator<-paste("flower_done")
+a<-rownames(flwr_done)
+flwr_fruit<-sigtab4[sigtab4$log2FoldChange >= 0,]
+b<-rownames(flwr_fruit)
+flwr_veg<-sigtab5[sigtab5$log2FoldChange >= 0,]
+d<-rownames(flwr_veg)
+
+e<-c(a,b,d)
+f<-unique(e)
+
+flwr_indicators<- subset_taxa(physeq = data_indic, colnames(data_indic@otu_table) %in% f)
+flwr_test<-phyloseq_to_df(flwr_indicators, addtax = T)
+sort(table(flwr_test$Phylum))
+
+#Fruit indicators
+fruit_done<-sigtab2[sigtab2$log2FoldChange <= 0,]
+a<-rownames(fruit_done)
+fruit_flwr<-sigtab4[sigtab4$log2FoldChange <= 0,]
+b<-rownames(fruit_flwr)
+
+fruit_veg<- sigtab6[sigtab6$log2FoldChange >= 0,]
+d<-rownames(fruit_veg)
+
+e<-c(a,b,d)
+f<-unique(e)
+
+fruit_indicators<- subset_taxa(physeq = data_indic, colnames(data_indic@otu_table) %in% f)
+fruit_test<-phyloseq_to_df(fruit_indicators, addtax = T)
+sort(table(fruit_test$Phylum))
+
+
+#Veg indicators
+veg_done<-sigtab3[sigtab3$log2FoldChange <= 0,]
+a<-rownames(veg_done)
+veg_flwr<-sigtab5[sigtab5$log2FoldChange <= 0,]
+b<-rownames(veg_flwr)
+veg_fruit<- sigtab6[sigtab6$log2FoldChange <= 0,]
+c<-rownames(veg_fruit)
+
+
+e<-c(a,b,c)
+f<-unique(e)
+
+veg_indicators<- subset_taxa(physeq = data_indic, colnames(data_indic@otu_table) %in% f)
+veg_test<-phyloseq_to_df(veg_indicators, addtax = T)
+sort(table(veg_test$Phylum))
+
+
+#False is not found in any other indicator set
+#done
+table(done_test$OTU %in% c(flwr_test$OTU,fruit_test$OTU, veg_test$OTU))
+which(!done_test$OTU %in% c(flwr_test$OTU,fruit_test$OTU, veg_test$OTU))
+unique_to_done<-done_test[which(!done_test$OTU %in% c(flwr_test$OTU,fruit_test$OTU, veg_test$OTU)),]
+table(unique_to_done$Phylum)
+table(unique_to_done$Class)
+table(unique_to_done$Order)
+table(unique_to_done$Family)
+
+#flwr
+table(flwr_test$OTU %in% c(done_test$OTU,fruit_test$OTU, veg_test$OTU))
+which(!flwr_test$OTU %in% c(done_test$OTU,fruit_test$OTU, veg_test$OTU))
+unique_to_flwr<-flwr_test[which(!flwr_test$OTU %in% c(done_test$OTU,fruit_test$OTU, veg_test$OTU)),]
+table(unique_to_flwr$Phylum)
+table(unique_to_flwr$Class)
+table(unique_to_flwr$Order)
+table(unique_to_flwr$Family)
+
+#veg
+table(veg_test$OTU %in% c(flwr_test$OTU,fruit_test$OTU, done_test$OTU))
+which(!veg_test$OTU %in% c(flwr_test$OTU,fruit_test$OTU, done_test$OTU))
+unique_to_veg<-veg_test[which(!veg_test$OTU %in% c(flwr_test$OTU,fruit_test$OTU, done_test$OTU)),]
+table(unique_to_veg$Phylum)
+table(unique_to_veg$Class)
+table(unique_to_veg$Order)
+table(unique_to_veg$Family)
+
+
+#fruit
+table(fruit_test$OTU %in% c(flwr_test$OTU,done_test$OTU, veg_test$OTU))
+which(!fruit_test$OTU %in% c(flwr_test$OTU,done_test$OTU, veg_test$OTU))
+unique_to_fruit<-done_test[which(!fruit_test$OTU %in% c(flwr_test$OTU,done_test$OTU, veg_test$OTU)),]
+table)$Phylum)
+table(unique_to_fruit$Class)
+table(unique_to_fruit$Order)
+table(unique_to_fruit$Family)
+
+
+all_status_indicator<-read.csv("/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/Status_indicators.csv")
+
+
+
+unique_idics_status<- all_status_indicator[all_status_indicator$X %in% c(unique_to_done$OTU, unique_to_flwr$OTU, unique_to_fruit$OTU, unique_to_veg$OTU),] 
+
+write.csv(unique_idics_status, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/Unique_indics_status.csv")
+
+unique_to_done_indic_table<-all_status_indicator[all_status_indicator$X %in% unique_to_done$OTU,]
+
+unique_to_flwr_indic_table<-all_status_indicator[all_status_indicator$X %in% unique_to_flwr$OTU,]
+
+unique_to_fruit_indic_table<-all_status_indicator[all_status_indicator$X %in% unique_to_fruit$OTU,]
+
+unique_to_veg_indic_table<-all_status_indicator[all_status_indicator$X %in% unique_to_veg$OTU,]
+
+unique_to_single_veg_status<-rbind(unique_to_done, unique_to_flwr, unique_to_fruit, unique_to_veg)
+
+write.csv(unique_to_single_veg_status, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/unique_to_single_status.csv")
+
+```
+
+Unique and shared taxa by time point. I'm not sure exactly how we should pursue this but it could be a good idea. Unique taxa to a stage suggest turnover and provide some sort of evidence for sucession.
+```{r}
+unique_to_t_point<-unique_taxa(data_transformed, treatment = "time_point")
+str(unique_to_t_point)
+9793-1348-441-1304-1094
+#5606 taxa shared between atleast two time points
+unique_to_g_type<-unique_taxa(data_transformed, treatment = "genotype")
+str(unique_to_g_type)
+9793-797-909-640-739-756
+#there are 5952 taxa shared between atleast two genotypes
+time_merged <-merge_samples(data.bac, "time_point")
+
+```
+Relative abundance bar plot of those taxa occuring in the unique to list.
+```{r}
+vec <- Reduce(c,unique_to_t_point)
+vec
+ps_unique<-subset_taxa(physeq = data.bac, colnames(data.bac@otu_table) %in% vec)
+
+library(RColorBrewer)
+n <- 74
+qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
+col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+pie(rep(1,n), col=sample(col_vector, n))
+
+#only taxa unique to one time point. 
+# We can revist this and decide what might be useful to visualize. 
+ps <- tax_glom(ps_unique, "Class")
+ps0 <- transform_sample_counts(ps, function(x) x / sum(x))
+ps1 <- merge_samples(ps0, "time_point")
+ps2 <- transform_sample_counts(ps1, function(x) x / sum(x))
+plot_bar(ps2, fill="Class") + scale_fill_manual(values = col_vector)
+```
+
+
+
+> all_status_indicator<-read.csv("/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/Status_indicators.csv")
+> View(all_status_indicator)
+> unique_idics_status<- all_status_indicator[all_status_indicator$X %in% c(unique_to_done$OTU, unique_to_flwr$OTU, unique_to_fruit$OTU, unique_to_veg$OTU),] 
+> unique_idics_status
+> write.csv(unique_idics_status, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/Unique_indics_status.csv")
