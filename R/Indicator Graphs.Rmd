@@ -134,8 +134,6 @@ T4_indic_plot
 ggsave("../figures/T4_indicators_unique.pdf")
 ```
 
-
-
 Read in supplementary table of indicator taxa for developmental stage
 ```{r}
 dev_indic<-read.csv("../data/Developmental_Stage_Indicator.csv")
