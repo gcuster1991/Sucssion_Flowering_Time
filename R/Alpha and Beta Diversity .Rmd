@@ -27,14 +27,14 @@ load("/Users/gordoncuster/Desktop/Manuscript Submissions/In Review/SuccessionFlo
 
 ```
 
-This has alreaady been ran and saved in the R environment that is included. 
+This has already been ran and saved in the R environment that is included. 
 ```{#r}
 ## MERGING INTO PHYLOSEQ OBJECT
 data <- merge_phyloseq(OTU,TAX,MAP)
 data
 ```
 
-Subsetting to non-bacterial taxa incase this would be of interest later. 
+Subsetting to non-bacterial taxa in case this would be of interest later. 
 ```{r}
 ## LOOKING AT CONTAMINATION AND UNASSIGNED SEQUENCES
 mitochondria_contaminants <- subset_taxa(data, Family == "Mitochondria") ## 118 ASVs of Mitochondria
@@ -65,7 +65,7 @@ data_transformed
 ```
 
 ##Alpha Diversity
-Calculate, statistical tests, and graphing of alpha divesity metrics
+Calculate, statistical tests, and graphing of alpha diversity metrics
 ```{r}
 #Prep data and create a dataframe to run statistics on
 mic.assmblg <- data_rarefied
@@ -114,7 +114,7 @@ tp_observed<-kruskal.test(results$Observed~ factor(d$phenotype))
 dunnTest(results$Observed~ factor(d$phenotype), method = "bon")
 ```
 
-Alpha diversity by plant genotypes at time point 1. This allows us to say that they were similiar at the begining, so differences were liekly due to flowering time or time since germination. 
+Alpha diversity by plant genotypes at time point 1. This allows us to say that they were similar at the beginning, so differences were likely due to flowering time or time since germination. 
 ```{r}
 #Create a new label that includes both pheno and genoptype in one label (Geno_Pheno)
 #genotype
@@ -175,7 +175,7 @@ dunnTest(results$Observed~ factor(d$Developmental_stage), method = "bon")
 ```
 
 ##Multivariate analyses - Beta-diversity
-Prepare dataframe for multivarite analyses
+Prepare data frame for multivariate analyses
 ```{r}
 #extract relevant data: OTU table and Metadata
 taxa_table<-data.frame(otu_table(data_transformed))
