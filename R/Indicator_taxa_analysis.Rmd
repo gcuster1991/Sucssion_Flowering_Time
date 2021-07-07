@@ -15,11 +15,11 @@ library(ggordiplots)
 library(tidyverse)
 library(vegan)
 library(RColorBrewer)
-library(metagMisc)
+
 
 #loaded original and then subset to only what we needed to keep
 #load("~/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/MicroFloweringTime_Env.RData")
-load("/Users/gordoncuster/Desktop/Manuscript Submissions/In Review/SuccessionFloweringTime/May_Revision/R_Data/Sucession_&_Flowering_Time_PS.RData")
+load("/Users/gordoncuster/Desktop/Manuscript Submissions/Published/SuccessionFloweringTime/May_Revision/R_Data/Sucession_&_Flowering_Time_PS.RData")
 data.bac <- subset_taxa(data, Kingdom == "Bacteria")
 #rarefy to 77213 reads for alpha diversity calculations
 data_rarefied <- rarefy_even_depth(data.bac, sample.size= 77213, rngseed=(12), replace=F)
@@ -85,6 +85,7 @@ res5 <- DESeq2::results(diagdds,  contrast = c("Sampling_time", "T2", "T4"))
 res6 <- DESeq2::results(diagdds,  contrast = c("Sampling_time", "T3", "T4"))
 
 #This needs to be run for each res# obeject 
+
 res<-res6
 alpha = 0.01
 sigtab <- res[which(res$padj < alpha), ]
@@ -104,7 +105,7 @@ head(sigtab)
 #sigtabT24<-sigtab
 #write.csv(sigtabT24, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/sigtab24_f.csv")
 
-#sigtabT34<-sigtab
+sigtabT34<-sigtab
 #write.csv(sigtabT34, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/sigtab34_f.csv")
 ```
 
@@ -177,6 +178,8 @@ ps2 <- transform_sample_counts(ps1, function(x) x / sum(x))
 common_indic_bar_plot_family<-plot_bar(ps2, fill="Family") + scale_fill_manual(values = col_vector) 
 common_indic_bar_plot_family <- common_indic_bar_plot_family + theme_bw() +  theme(axis.text.x = element_text(color="black", size=10, angle=45, hjust=1),
           axis.text.y = element_text(color="black", size=10, angle=45)) + scale_x_discrete(name ="Sampling Time") + ylab("Relative Abundance") + theme(axis.text=element_text(size=12)) 
+
+ggsave("/Users/gordoncuster/Desktop/Manuscript Submissions/Published/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/Final_Figures/Figure5.tiff", device = "tiff",dpi = 320) 
 ```
 
 Subset the indicators to only those taxa that are unique to single time point.
@@ -393,12 +396,12 @@ res5 <- DESeq2::results(diagdds,  contrast = c("Developmental_stage", "flowering
 
 res6 <- DESeq2::results(diagdds,  contrast = c("Developmental_stage", "fruiting", "vegetative")) # 6
 
-res<-res4
+res<-res6
   
 alpha = 0.01
 sigtab <- res[which(res$padj < alpha), ]
 sigtab <- cbind(as(sigtab, "data.frame"), as(tax_table(data_rarefied)[rownames(sigtab), ], "matrix"))
-View(sigtab)
+#View(sigtab)
 
 #hashed out so i cant over write accidentaly. Each output table gets its own sigtab for later. 
 #sigtab1<- sigtab #
@@ -415,7 +418,7 @@ View(sigtab)
 #sigtab5<- sigtab
 #write.csv(sigtab5, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/flwr_veg.csv")
 
-#sigtab6<- sigtab
+sigtab6<- sigtab
 #write.csv(sigtab6, "/Users/gordoncuster/Desktop/Manuscript Submissions/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/IndicatorAnalysis/fruit_veg.csv")
 
 ```
@@ -459,6 +462,8 @@ common_indic_bar_plot_family$data$Sample <- factor(common_indic_bar_plot_family$
 common_indic_bar_plot_family <- common_indic_bar_plot_family + theme_bw() +  theme(axis.text.x = element_text(color="black", size=10, angle=45, hjust=1),
           axis.text.y = element_text(color="black", size=10, angle=45)) + scale_x_discrete(name ="Developmental Stage") + ylab("Relative Abundance") + theme(axis.text=element_text(size=12)) 
 common_indic_bar_plot_family
+
+ggsave("/Users/gordoncuster/Desktop/Manuscript Submissions/Published/SuccessionFloweringTime/SuccessionFloweringTime/May_Updated_Meta_data/Final_Figures/Figure4.tiff", device = "tiff", dpi = 320) 
 ```
 
 Taxa unique to a single flowering stage.
